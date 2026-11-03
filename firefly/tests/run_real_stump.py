@@ -88,6 +88,10 @@ try:
     core.send(node_hex, "/board")
     check(wait(lambda: any(it["kind"] == "notice" and "FireFly test" in it["title"] for it in lines()), 90),
           "/board lists the notice just posted")
+    from firefly import lan
+    found = lan.find_stumps(["127.0.0.1", "255.255.255.255"], wait=2.0)
+    check(node_hex in found, f"the same Stump answers STUMP? on the LAN: {found.get(node_hex, {}).get('name')} "
+                             f"{found.get(node_hex, {}).get('http')}")
     core.start_stump_auth(node_hex)
     check(wait(lambda: core.auth_state(node_hex).state == stump.AuthSession.OK, 120), "/auth handshake: AUTH-OK")
 finally:

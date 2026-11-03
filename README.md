@@ -14,7 +14,7 @@ re-implementation, so compatibility comes from the reference code itself.
 
 ![FireFly screens: chats, a conversation, a Stump node, the keyboard, network and setup](docs/screenshots.png)
 
-**Status:** v0.8.2 (sandbox: beta testing against [SandBox_Stump_On](https://github.com/ruderigo/SandBox_Stump_On); stable FireFly is [FireFly_RK3326_R36MAX_R36S](https://github.com/ruderigo/FireFly_RK3326_R36MAX_R36S)). Runs on RK3326 handhelds with the dArkOS image of
+**Status:** v0.9.0 (sandbox: beta testing against [SandBox_Stump_On](https://github.com/ruderigo/SandBox_Stump_On); stable FireFly is [FireFly_RK3326_R36MAX_R36S](https://github.com/ruderigo/FireFly_RK3326_R36MAX_R36S)). Runs on RK3326 handhelds with the dArkOS image of
 [arkos4clone](https://github.com/lcdyk0517/arkos4clone); tested on an R36MAX.
 See [Supported devices](#supported-devices).
 
@@ -169,6 +169,14 @@ Ports entry.
   once per file, and says so.
 - **Network passphrase (IFAC)**, for meshes that protect their channel with
   one: set it in SETUP, or let `radio.json` carry it. Applies live.
+- **The local network, as EmulationStation set it up.** FireFly never joins,
+  scans or stores Wi-Fi networks: choose the network and type its password in
+  EmulationStation's Wi-Fi settings (or plug in a USB network adapter), and
+  FireFly uses it. It follows changes while it runs: a network joined after
+  FireFly started, another network chosen, a USB adapter plugged in. NETWORK
+  shows the network's name, address, whether it reaches the internet, the
+  Reticulum devices found nearby (Sideband, NomadNet, MeshChat, other
+  FireFlys), and the **Stumps on the same network** with their web address.
 - **Clear radio status**: online (with the board's chip and firmware), no
   radio plugged in, searching, or *refused*: an RNode answered but won't use
   these settings (for example a frequency outside its band), or its firmware
@@ -235,7 +243,7 @@ updates never touch:
 | `settings.json` | your settings |
 | `firefly.db` | contacts and messages (SQLite) |
 | `lxmf/` | LXMF router state |
-| `reticulum/config` | Reticulum config for Wi-Fi/LAN and TCP links, generated from the settings on every start (set `"managed_config": false` to use `~/.reticulum` instead). The radio isn't in it: FireFly attaches it at runtime. |
+| `reticulum/config` | Reticulum config for TCP links, generated from the settings on every start (set `"managed_config": false` to use `~/.reticulum` instead). The radio isn't in it: FireFly attaches it at runtime. |
 
 If an `rnsd` shared instance is already running, FireFly uses it, and
 rnsd's own config decides the interfaces.
@@ -266,6 +274,7 @@ From the `firefly/` folder:
     python3 tests/run_propagation.py   # offline peer: fallback to a propagation node
     python3 tests/run_radio.py         # radio manager against simulated RNodes (no hardware needed)
     STUMP_DIR=~/Stump python3 tests/run_real_stump.py   # against a real computer Stump (see the file); skipped without STUMP_DIR
+    python3 tests/run_lan.py           # the handheld's network, read-only and followed live; STUMP? answers
     python3 tests/run_stump_protocol.py # Stump 1.0.0-beta.34 lines: #lora-mesh, nick@stump, ⧗, [LoRa]
     python3 tests/run_radiojson.py     # the Stump provisioner's radio.json, and the network passphrase
     python3 tests/run_voice.py         # voice notes: Codec 2 spec test vector, Opus, SD copy (needs opusdec, c2dec)

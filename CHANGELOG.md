@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.9.0 (sandbox)
+**The local network, exactly as EmulationStation set it up.**
+- FireFly takes whatever network the handheld is on (Wi-Fi chosen in
+  EmulationStation, a cable, a USB network adapter) and never joins, scans,
+  stores or changes one: no `nmcli`, no passwords, no root. Like a ROM.
+- **Followed live.** Reticulum's local discovery (how Sideband, NomadNet,
+  MeshChat and other FireFlys find each other on a LAN) used to bind only to
+  the networks present when FireFly started. It is now attached at runtime
+  and again whenever the network changes: joined later in EmulationStation,
+  another network chosen, a USB adapter plugged in, a cable pulled. FireFly
+  announces itself on the new network and collects messages at once.
+  SETUP's *Local network discovery* switch applies live, no restart.
+- **NETWORK → LOCAL NETWORK:** the network's name (read with `iwgetid`), the
+  handheld's address, whether it reaches the internet, how many Reticulum
+  devices discovery found, or "No network: join Wi-Fi in EmulationStation's
+  settings".
+- **Stumps on the same network:** FireFly asks `STUMP?` (UDP 4244, Stump
+  1.0.0-beta.21+) every minute and lists the answers with their web address;
+  a Stump also heard over LoRa is marked so. Answers are checked (address,
+  name, web address) before use. Tested against a real Stump 1.0.0-beta.50.
+- NETWORK → Y → *Look at the network again*.
+- `tests/run_lan.py` (new, in CI): reading the network, `STUMP?`, and the
+  manager following a fake network through every change above; a real
+  Reticulum AutoInterface attached and removed at runtime.
+
 ## 0.8.2 (sandbox)
 Checked against **Stump 1.0.0-beta.50**, now build 50. SandBox_Stump_On is
 where Stump is developed and released from beta.50 on; LaBuche-Stump keeps

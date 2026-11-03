@@ -600,6 +600,8 @@ class NetworkTab(Screen):
             self.app.push(Menu(self.app, "Network", [
                 ("Show my address as a QR code", lambda: self.app.push(QrScreen(
                     self.app, core.settings["display_name"], core.address, "my LXMF address: scan it to add me"))),
+                ("Look at the network again (Stumps on it too)", lambda: (core.lan and core.lan.poke(),
+                                                                           self.app.toast("Looking at the network…"))),
                 ("Search for RNodes now", lambda: (core.radio and core.radio.search_now(),
                                                    self.app.toast("Searching for RNodes…"))),
                 ("Nomad Network nodes heard", lambda: self.app.push(Info(self.app, "Nomad nodes", [
@@ -661,6 +663,16 @@ class NetworkTab(Screen):
                 out.append(("m", "   " + "  ".join(radio)))
         if not self._stats.get("interfaces"):
             out.append(("m", "No interface statistics available."))
+        out += [("", ""), ("h", "LOCAL NETWORK (as set in EmulationStation)")]
+        lan = getattr(core, "lan", None)
+        if lan is not None:
+            for ln in lan.summary():
+                out.append(("err" if ln.startswith("No network") else "m", ln))
+            if lan.stumps:
+                out.append(("m", "Stumps on this network:"))
+                for st in sorted(lan.stumps.values(), key=lambda x: x["name"]):
+                    known = " · also heard over LoRa" if core.is_stump(st["lxmf"]) else ""
+                    out.append(("ok", f"  ⌂ {st['name']}  {st['here'] or ''}  {st['release']}{known}"))
         out += [("", ""), ("h", "PROPAGATION (store & forward)")]
         pn = core.propagation_node()
         if pn:
@@ -773,7 +785,7 @@ class SettingsTab(ListScreen):
             ("ifac", "Network passphrase", _ifac_label(r)),
             ("rjson", "Load radio.json from SD card", ""),
             ("head", "OTHER LINKS", None),
-            ("auto", "Wi-Fi/LAN discovery", "on" if s["auto_interface"] else "off"),
+            ("auto", "Local network discovery", "on" if s["auto_interface"] else "off"),
             ("tcp", "Internet/TCP peers", f"{len(s['tcp_peers'])} configured"),
             ("transport", "Relay for others (transport)", "on" if s["transport"] else "off"),
             ("head", "OFFLINE DELIVERY", None),
@@ -864,7 +876,9 @@ class SettingsTab(ListScreen):
         elif key == "radio_on":
             r["enabled"] = not r["enabled"]; self._radio()
         elif key == "auto":
-            s["auto_interface"] = not s["auto_interface"]; self._net()
+            s["auto_interface"] = not s["auto_interface"]; s.save()
+            if core.lan:
+                core.lan.poke()          # applies live: no restart
         elif key == "transport":
             s["transport"] = not s["transport"]; self._net()
         elif key == "fallback":
