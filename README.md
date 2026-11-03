@@ -14,7 +14,7 @@ re-implementation, so compatibility comes from the reference code itself.
 
 ![FireFly screens: chats, a conversation, a Stump node, the keyboard, network and setup](docs/screenshots.png)
 
-**Status:** v0.8.1 (sandbox: beta testing against [SandBox_Stump_On](https://github.com/ruderigo/SandBox_Stump_On); stable FireFly is [FireFly_RK3326_R36MAX_R36S](https://github.com/ruderigo/FireFly_RK3326_R36MAX_R36S)). Runs on RK3326 handhelds with the dArkOS image of
+**Status:** v0.8.2 (sandbox: beta testing against [SandBox_Stump_On](https://github.com/ruderigo/SandBox_Stump_On); stable FireFly is [FireFly_RK3326_R36MAX_R36S](https://github.com/ruderigo/FireFly_RK3326_R36MAX_R36S)). Runs on RK3326 handhelds with the dArkOS image of
 [arkos4clone](https://github.com/lcdyk0517/arkos4clone); tested on an R36MAX.
 See [Supported devices](#supported-devices).
 
@@ -265,6 +265,7 @@ From the `firefly/` folder:
     python3 tests/run_integration.py   # LXMF round trips, links, Stump /auth, over localhost TCP
     python3 tests/run_propagation.py   # offline peer: fallback to a propagation node
     python3 tests/run_radio.py         # radio manager against simulated RNodes (no hardware needed)
+    STUMP_DIR=~/Stump python3 tests/run_real_stump.py   # against a real computer Stump (see the file); skipped without STUMP_DIR
     python3 tests/run_stump_protocol.py # Stump 1.0.0-beta.34 lines: #lora-mesh, nick@stump, ⧗, [LoRa]
     python3 tests/run_radiojson.py     # the Stump provisioner's radio.json, and the network passphrase
     python3 tests/run_voice.py         # voice notes: Codec 2 spec test vector, Opus, SD copy (needs opusdec, c2dec)
@@ -289,5 +290,5 @@ FireFly builds on [Reticulum](https://github.com/markqvist/Reticulum) and
 and [pygame](https://www.pygame.org) (LGPL). QR codes are drawn with a bundled
 copy of [python-qrcode](https://github.com/lincolnloop/python-qrcode) 8.2 (BSD,
 licence in `firefly/firefly/vendor/qrcode/LICENSE`). Colour palette after the
-[LaBuche-Stump](https://github.com/ruderigo/LaBuche-Stump) project's Amber
+[Project Stump](https://github.com/ruderigo/SandBox_Stump_On)'s Amber
 theme.

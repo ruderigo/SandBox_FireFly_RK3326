@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.8.2 (sandbox)
+Checked against **Stump 1.0.0-beta.50**, now build 50. SandBox_Stump_On is
+where Stump is developed and released from beta.50 on; LaBuche-Stump keeps
+the releases up to beta.48. Nothing changed for LXMF clients since beta.46:
+beta.47 (a DM to a Stump answered privately by its bot) arrives as an
+ordinary `[DM]` line, and beta.48 to beta.50 are provisioning and docs.
+- **Tested against a real Stump, not only a fake one:** `tests/run_real_stump.py`
+  starts an unmodified computer Stump from SandBox_Stump_On and talks to it
+  over a simulated LoRa channel (FireFly's RNode on a pseudo-terminal, the
+  Stump's "Heltec over Wi-Fi" on TCP 7633). Passed with beta.50: the Stump
+  recognised from its beacon with its release, landing in `#lora-mesh`,
+  `/rooms`, `/post` (`✓ #id`), `/board` listing that notice, and `/auth`
+  (AUTH-OK). Skipped unless `STUMP_DIR` points to a Stump folder.
+- The fake RNode can now share a channel with another (`link()`), and has a
+  TCP variant for Wi-Fi-mode Heltecs.
 ## 0.8.1 (sandbox)
 - **Build number next to the version:** the SandBox_Stump_On build this
   FireFly is tested against, now 46 (Stump 1.0.0-beta.46). The start-up
