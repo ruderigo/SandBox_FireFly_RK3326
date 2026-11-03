@@ -62,6 +62,7 @@ class Core:
         self.stumps = {}            # lxmf hash hex -> (name, version)
         self.running = False
         self.radio = None
+        self.lan = None
         self.voice_export_status = None   # (folder, copied, last error)
         self._blocked = set()
         self.started_at = time.time()
@@ -124,6 +125,10 @@ class Core:
         from .radio import RadioManager
         self.radio = RadioManager(self)
         self.radio.start()
+        # The handheld's own network (as EmulationStation set it up), followed live.
+        from .lan import LanManager
+        self.lan = LanManager(self)
+        self.lan.start()
         self.log(f"FireFly address {self.address}  identity {self.identity.hash.hex()}")
 
     def stop(self):
@@ -131,6 +136,9 @@ class Core:
         radio = getattr(self, "radio", None)
         if radio:
             radio.stop()
+        lan = getattr(self, "lan", None)
+        if lan:
+            lan.stop()
         try:
             self.router.exit_handler()
         except Exception:

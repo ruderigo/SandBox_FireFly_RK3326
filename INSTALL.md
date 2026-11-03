@@ -10,7 +10,7 @@ In the commands below, replace:
 - `<handheld-ip>` with your handheld's IP address (shown in its Wi-Fi or
   network info screen),
 - `FireFly-RK3326-X.Y.Z.zip` with the zip's file name (currently
-  `FireFly-RK3326-0.8.2.zip`; releases up to 0.6.2 were named `firefly_vX.Y.Z.zip`).
+  `FireFly-RK3326-0.9.0.zip`; releases up to 0.6.2 were named `firefly_vX.Y.Z.zip`).
 
 ---
 
@@ -372,7 +372,8 @@ sync
 | LORA RADIO says **RNode refused** | The line below says why: a frequency outside the board's band, a TX power above its limit, or firmware too old (update with `rnodeconf`). Change the setting and it retries by itself. |
 | `Permission denied` on the serial port | Reboot after installing (the `dialout` group needs a new login). |
 | Nobody appears in PEERS | Radio settings must match the other nodes exactly: frequency, bandwidth, spreading factor, coding rate. |
-| "AutoInterface could not autoconfigure" in the log | Wi-Fi/LAN discovery needs the network up when FireFly starts. Doesn't affect LoRa. |
+| NETWORK says "No network" | Join a Wi-Fi network in EmulationStation's settings (FireFly never does it). FireFly picks it up within a few seconds, no restart. |
+| "Local discovery: waiting for an IPv6 link" | The network gave the handheld no IPv6 link address yet; Reticulum's local discovery needs one. Internet peers and LoRa are unaffected. |
 | NETWORK warns the identity key was restored or recreated | See [Your identity](README.md#your-identity). If a new address was created, restore your backup (section 10). |
 | Buttons do nothing | `launch.log` lists unmapped buttons; add them to `joystick_map` in `~/.firefly/settings.json`, e.g. `{"0": "a", "1": "b"}`. |
 | Squares instead of symbols | `sudo apt install fonts-dejavu-core` |

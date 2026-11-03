@@ -56,13 +56,11 @@ def build_config(settings, rnode_port=None):
              "  panic_on_interface_error = No",
              "", "[logging]", f"  loglevel = {int(s['log_level'])}", "", "[interfaces]"]
 
-    lines += ["", "  [[Local network (AutoInterface)]]",
-              "    type = AutoInterface",
-              f"    enabled = {_yn(s['auto_interface'])}"]
-
-    # The LoRa radio is NOT configured here: FireFly's radio manager attaches
-    # whichever RNode it finds at runtime, so a missing or faulty radio never
-    # affects start-up.
+    # Neither the LoRa radio nor local network discovery is configured here:
+    # the radio manager attaches whichever RNode it finds, and the LAN manager
+    # attaches discovery on whatever network the handheld is on, both at
+    # runtime and both following changes (a network joined later in
+    # EmulationStation, a radio plugged in later).
 
     for i, peer in enumerate(s["tcp_peers"]):
         host, _, port = str(peer).rpartition(":")
