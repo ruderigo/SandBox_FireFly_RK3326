@@ -38,11 +38,18 @@ class FakeRNode:
         self.booted_at = 0.0
         self.ignored = 0
         self.alive = True
+        self.peer = None          # another fake RNode "on the air" (see link())
         threading.Thread(target=self._loop, daemon=True).start()
+
+    def _write(self, data):
+        os.write(self.master, data)
+
+    def _read(self):
+        return os.read(self.master, 256)
 
     def _send(self, cmd, payload):
         try:
-            os.write(self.master, bytes([FEND, cmd]) + esc(payload) + bytes([FEND]))
+            self._write(bytes([FEND, cmd]) + esc(payload) + bytes([FEND]))
         except OSError:
             pass
 
@@ -56,6 +63,10 @@ class FakeRNode:
             self.last_rx = now
         if now < self.booted_at:
             self.ignored += 1             # still booting: bytes are lost, as on the real board
+            return
+        if cmd == CMD["DATA"]:
+            if self.peer is not None and self.peer.alive:     # what one transmits, the other hears
+                self.peer._send(CMD["DATA"], data)
             return
         if cmd == CMD["DETECT"] and data[:1] == b"\x73":
             self._send(CMD["DETECT"], b"\x46")
@@ -86,9 +97,11 @@ class FakeRNode:
         buf, in_frame, escape = bytearray(), False, False
         while self.alive:
             try:
-                chunk = os.read(self.master, 256)
+                chunk = self._read()
             except OSError:
                 break
+            if not chunk:
+                continue
             for b in chunk:
                 if b == FEND:
                     if in_frame and buf:
@@ -110,3 +123,42 @@ class FakeRNode:
                 os.close(fd)
             except OSError:
                 pass
+
+
+def link(a, b):
+    """Put two fake RNodes on the same simulated LoRa channel."""
+    a.peer, b.peer = b, a
+
+
+class TcpRNode(FakeRNode):
+    """A fake RNode reached over TCP, like a Heltec in Wi-Fi mode (port 7633): what a
+    Stump on a computer uses as its 'Heltec over Wi-Fi'."""
+
+    def __init__(self, port=7633, **kw):
+        import socket
+        self.srv = socket.socket(); self.srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.srv.bind(("127.0.0.1", port)); self.srv.listen(1)
+        self.conn = None
+        self.master = self._slave = -1
+        self.port = f"tcp://127.0.0.1:{port}"
+        band = kw.get("band", (137e6, 1020e6))
+        self.band, self.fw, self.answers, self.max_txp = band, kw.get("fw", (1, 86)), True, 22
+        self.freq = int(band[0]); self.bw = 125000; self.txp = 0; self.sf = 7; self.cr = 5; self.state = 0
+        self.set_log, self.boot_s, self.last_rx, self.booted_at, self.ignored = [], 0.0, 0.0, 0.0, 0
+        self.alive, self.peer = True, None
+        threading.Thread(target=self._loop, daemon=True).start()
+
+    def _read(self):
+        if self.conn is None:
+            self.conn, _ = self.srv.accept()
+        try:
+            data = self.conn.recv(512)
+        except OSError:
+            data = b""
+        if not data:                       # the client went away: wait for the next one
+            self.conn = None
+        return data
+
+    def _write(self, data):
+        if self.conn is not None:
+            self.conn.sendall(data)
