@@ -98,21 +98,34 @@ core._on_message(FakeLXM(THEM, "hi, where are you?", {LXMF.FIELD_COMMANDS: [{0x0
 check(core.store.messages(THEM)[-1]["content"] == "hi, where are you?", "text sent with a request is shown as it is")
 
 print("formatted messages")
-md = "# Title\n\nSome **bold** and _italic_ and `code`.\n\n- one\n- [x] done\n> quoted\n\n---\n```\nx = 1\n```\n[site](https://example.org)"
+md = ("# Title\n\nSome **bold** and _italic_ and `code` and ***both*** and ~~gone~~.\n\n- one\n- [x] done\n"
+      "> quoted\n\n---\n```\nx = 1\n```\n[site](https://example.org)\nsnake_case and 2*3*4 stay as they are")
 r = markup.render(md, markup.MARKDOWN)
-styles = [s for s, _ in r]
-check(r[0] == ("h1", "Title"), "Markdown heading")
-check(("text", "Some bold and italic and code.") in r, f"inline marks dropped, words kept")
-check(("li", "• one") in r and ("li", "☑ done") in r, "lists and tasks")
-check(("quote", "quoted") in r and "rule" in styles and ("code", "x = 1") in r, "quote, divider, code block")
-check(("text", "site (https://example.org)") in r, "links keep their address")
+P = lambda line: markup.plain(line[1])
+def flags_of(line, word):
+    return next((fl for fl, t in line[1] if word in t), None)
+check(r[0][0] == "h1" and P(r[0]) == "Title", "Markdown heading")
+body = next(l for l in r if "bold" in P(l))
+check(P(body) == "Some bold and italic and code and both and gone.", "inline marks taken out of the words")
+check(flags_of(body, "bold") == {"b"} and flags_of(body, "italic") == {"i"} and flags_of(body, "code") == {"code"}
+      and flags_of(body, "both") == {"b", "i"} and flags_of(body, "gone") == {"s"},
+      "...and kept as styles: bold, italic, code, bold italic, strikethrough")
+check(any(P(l) == "• one" for l in r) and any(P(l) == "☑ done" for l in r), "lists and tasks")
+check(any(l[0] == "quote" for l in r) and any(l[0] == "rule" for l in r) and ("code", [(frozenset({"code"}), "x = 1")]) in r,
+      "quote, divider, code block")
+link = next(l for l in r if "site" in P(l))
+check(P(link) == "site (https://example.org)" and flags_of(link, "site") == {"link"}, "links: styled text, address kept")
+check(any(P(l) == "snake_case and 2*3*4 stay as they are" and all(not fl for fl, _ in l[1]) for l in r),
+      "underscores inside words and lone stars are left alone")
 mi = "> Section\n`!Bold`! and `*it`* `Ff00red`f\n`[Home`:/page/index.mu]\n# a comment\n-"
 r = markup.render(mi, markup.MICRON)
-check(r[0] == ("h1", "Section") and ("text", "Bold and it red") in r, f"Micron heading and tags: {r[:2]}")
-check(("text", "Home (:/page/index.mu)") in r and ("rule", "") in r and not any("comment" in t for _, t in r),
+check(r[0][0] == "h1" and P(r[0]) == "Section" and P(r[1]) == "Bold and it red", f"Micron heading and tags")
+check(flags_of(r[1], "Bold") == {"b"} and flags_of(r[1], "it") == {"i"}, "Micron bold and italic kept as styles")
+check(P(r[2]) == "Home (:/page/index.mu)" and ("rule", []) in r and not any("comment" in P(l) for l in r),
       "Micron links, dividers, comments")
-check(markup.render("[b]x[/b] [url=http://a]here[/url]", markup.BBCODE) == [("text", "x here (http://a)")], "BBCode")
-check(markup.render("*not markdown*", markup.PLAIN) == [("text", "*not markdown*")], "plain text left alone")
+r = markup.render("[b]x[/b] [i]y[/i] [url=http://a]here[/url]", markup.BBCODE)
+check(P(r[0]) == "x y here (http://a)" and flags_of(r[0], "x") == {"b"} and flags_of(r[0], "y") == {"i"}, "BBCode")
+check(P(markup.render("*not markdown*", markup.PLAIN)[0]) == "*not markdown*", "plain text left alone")
 mid = core.store.add_message(THEM, False, md, "received", renderer=2)
 check(core.store.message(mid)["renderer"] == 2, "the renderer is kept with the message")
 

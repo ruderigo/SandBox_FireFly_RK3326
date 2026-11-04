@@ -206,7 +206,7 @@ same protocol. Where apps differ, and what FireFly does:
 | Addresses | Sideband, NomadNet: the bare 32-hex address. Columba, MeshChatX, T-Deck LXMF: `lxma://<address>:<key>`. Stumps and FireFly: `lxmf://<address>?key=…` (`stump=` for a Stump). MeshChat: none, it learns from announces | *Show QR code* switches between all three (←→). *Add contact* takes any of them; a link's key is checked against its address and handed to Reticulum, so you can write at once |
 | Messages | Same everywhere: text, single packet / link / propagation node, stamps, signatures | Same. Sideband's stamp tickets aren't used: FireFly makes the stamp |
 | Content | Voice; images and files; Sideband's location and telemetry; avatar icons | Voice plays (Opus, Codec 2). Images, files, telemetry: a line saying what was sent. Icons: ignored |
-| Formatting | NomadNet sends Markdown, Sideband reads it; Micron on NomadNet | Markdown, Micron and BBCode rendered: headings, lists, quotes, code, links as text (url) |
+| Formatting | NomadNet sends Markdown, Sideband reads it; Micron on NomadNet | Markdown, Micron and BBCode rendered with real styles: bold, italic, underline, strikethrough, inline code, headings, lists, quotes, code blocks; links as underlined text (url) |
 | Requests | Sideband and MeshChat ask for location, telemetry, pings, signal reports | Declined politely, once an hour per contact; shown as a short note, never an empty message |
 | Pages | NomadNet nodes serve Micron pages (NomadNet, MeshChat browse them) | Not browsable: nodes heard are listed |
 | Paper messages | Sideband's `lxm://` QR codes | Not read (no camera) |

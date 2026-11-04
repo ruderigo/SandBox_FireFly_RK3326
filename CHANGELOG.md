@@ -21,8 +21,12 @@ teams' work (Stump beta.52-53, FireFly for Android 0.6.0-beta).
   ("⊘ Asked for location and telemetry: declined"), and one reply a contact
   can read, at most once an hour each, never to a Stump.
 - **Formatted messages rendered** (`FIELD_RENDERER`): Markdown (NomadNet,
-  Sideband), Micron (NomadNet) and BBCode become headings, bullets, tasks,
-  quotes, code and "text (url)" links instead of raw symbols.
+  Sideband), Micron (NomadNet) and BBCode, with real styles: **bold**,
+  *italic*, bold italic, underline, strikethrough, `code` on a dark
+  background (monospace), headings, bullets, ☑/☐ tasks, quotes, code blocks,
+  dividers, and links underlined with their address in brackets. Italics use
+  DejaVu's oblique faces when installed (fonts-dejavu-extra), else pygame
+  slants the regular face, so they always show.
 - README: *Working with other LXMF apps*, layer by layer.
 - Tests: `run_interop.py` (new, in CI): every code format both ways, forged
   keys, the lxma:// QR decoded back with zbarimg, contacts writable at once,
