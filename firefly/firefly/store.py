@@ -142,6 +142,22 @@ class Store:
         rows = self._read("SELECT * FROM messages WHERE id=?", (msg_id,))
         return rows[0] if rows else None
 
+    def repair_stump_times(self, peers):
+        """0.9.1 filed Stump lines by the Stump's own clock, which can be off: put each
+        received line back after the one stored before it (by row order). Once per peer."""
+        fixed = 0
+        for peer in peers:
+            rows = self._read("SELECT id, ts, outgoing FROM messages WHERE peer=? ORDER BY id", (peer,))
+            last = 0.0
+            for r in rows:
+                if not r["outgoing"] and r["ts"] < last - 1:
+                    self._write("UPDATE messages SET ts=? WHERE id=?", (last + 0.001, r["id"]))
+                    last += 0.001
+                    fixed += 1
+                else:
+                    last = max(last, r["ts"])
+        return fixed
+
     def messages(self, peer, limit=200):
         rows = self._read("SELECT * FROM messages WHERE peer=? ORDER BY ts DESC, id DESC LIMIT ?", (peer, limit))
         return rows[::-1]

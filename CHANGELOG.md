@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.2 (sandbox)
+- **Fixed: new lines from a Stump showed up among old ones ("yesterday").**
+  0.9.1 filed lines received over Wi-Fi by the Stump's own clock, which can
+  be unset or off (a CAM has no battery clock), so a new line could sort at
+  the top of the chat. Stump lines are now filed by when they arrive, over
+  Wi-Fi and over LoRa alike (Stump chat is never stored and forwarded, so
+  arrival time is the right one). Lines already misfiled by 0.9.1 are put
+  back in the order they arrived, once, at the next start.
+- **The room label shows only where the room changes.** Over Wi-Fi each line
+  is its own message, and each repeated `#lora-mesh` above it; now a run of
+  lines from one room has one label, as a LoRa batch does.
+
 ## 0.9.1 (sandbox)
 Build 51 (Stump 1.0.0-beta.51).
 - **Chat with Stumps over Wi-Fi.** 0.9.0 listed the Stumps on the network

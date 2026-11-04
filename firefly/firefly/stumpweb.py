@@ -211,7 +211,9 @@ class StumpWeb:
         if isinstance(v, dict) and m.get("kind") == "dm":
             audio = self._fetch_voice(m.get("id"), v)
         self.core.store.upsert_peer(self.lxmf, "lxmf", heard=True)
-        self.core.store.add_message(self.lxmf, False, content, "received", ts=m.get("ts") or time.time(),
+        # Arrival time, not the Stump's clock: a Stump's clock may be unset or off
+        # (a CAM has no battery clock), which put new lines among yesterday's.
+        self.core.store.add_message(self.lxmf, False, content, "received", ts=time.time(),
                                     title=title, method="wifi", lxm_hash=key, verified=True, unread=True, **audio)
 
     def _fetch_voice(self, mid, v):
