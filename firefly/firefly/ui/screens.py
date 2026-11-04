@@ -257,6 +257,10 @@ class ChatScreen(Screen):
             ns = core.stump_state.get(self.peer)
             if ns and ns.room:
                 info.append("in #" + ns.room)
+            w = core.web.get(self.peer)
+            if w is not None:
+                info.append({"online": f"over Wi-Fi as {w.nick}", "greeting": "Wi-Fi: greeting…",
+                             "lost": "Wi-Fi lost: LoRa", "refused": "Wi-Fi refused: LoRa"}.get(w.state, "LoRa"))
             a = core.auth_state(self.peer)
             if a:
                 info.append({a.OK: "verified ✓", a.FAILED: "verify failed"}.get(a.state, "verifying…"))
@@ -671,8 +675,13 @@ class NetworkTab(Screen):
             if lan.stumps:
                 out.append(("m", "Stumps on this network:"))
                 for st in sorted(lan.stumps.values(), key=lambda x: x["name"]):
-                    known = " · also heard over LoRa" if core.is_stump(st["lxmf"]) else ""
-                    out.append(("ok", f"  ⌂ {st['name']}  {st['here'] or ''}  {st['release']}{known}"))
+                    out.append(("ok", f"  ⌂ {st['name']}  {st['here'] or ''}  {st['release']}"))
+                    w = core.web.get(st["lxmf"])
+                    if w is not None:
+                        state = {"online": f"chatting over Wi-Fi as {w.nick}", "greeting": "greeting…",
+                                 "lost": "Wi-Fi lost, using LoRa", "refused": "refused", "off": "off"}.get(w.state, w.state)
+                        out.append(("err" if w.state in ("lost", "refused") else "m",
+                                    f"    {state}" + (f": {w.detail}" if w.detail else "")))
         out += [("", ""), ("h", "PROPAGATION (store & forward)")]
         pn = core.propagation_node()
         if pn:
@@ -786,6 +795,7 @@ class SettingsTab(ListScreen):
             ("rjson", "Load radio.json from SD card", ""),
             ("head", "OTHER LINKS", None),
             ("auto", "Local network discovery", "on" if s["auto_interface"] else "off"),
+            ("stumpwifi", "Chat with Stumps over Wi-Fi", "on" if s.get("stump_wifi", True) else "off"),
             ("tcp", "Internet/TCP peers", f"{len(s['tcp_peers'])} configured"),
             ("transport", "Relay for others (transport)", "on" if s["transport"] else "off"),
             ("head", "OFFLINE DELIVERY", None),
@@ -856,7 +866,7 @@ class SettingsTab(ListScreen):
             r["tx_power"] = max(0, min(22, r["tx_power"] + d)); self._radio()
         elif key == "freq":
             r["frequency"] += d * 25_000; self._radio()
-        elif key in ("radio_on", "auto", "transport", "fallback", "voicesd"):
+        elif key in ("radio_on", "auto", "transport", "fallback", "voicesd", "stumpwifi"):
             self._edit(key)
         elif key == "port":
             opts = ["auto"] + serial_ports()
@@ -875,6 +885,10 @@ class SettingsTab(ListScreen):
                              max_len=40, show_packet_meter=False))
         elif key == "radio_on":
             r["enabled"] = not r["enabled"]; self._radio()
+        elif key == "stumpwifi":
+            s["stump_wifi"] = not s.get("stump_wifi", True); s.save()
+            if core.lan:
+                core.lan.poke()
         elif key == "auto":
             s["auto_interface"] = not s["auto_interface"]; s.save()
             if core.lan:

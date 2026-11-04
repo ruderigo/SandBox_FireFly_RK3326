@@ -229,6 +229,10 @@ class LanManager:
                 if time.time() - v["seen"] > 3 * STUMP_SCAN_S:
                     del self.stumps[k]
             self.stumps.update(found)
+        try:
+            self.core.sync_web(self.stumps)            # chat with them over Wi-Fi
+        except Exception as e:
+            RNS.log(f"Stumps over Wi-Fi: {e}", RNS.LOG_WARNING)
 
     # ---------------------------------------------------------------- AutoInterface
     def _attach(self, names):

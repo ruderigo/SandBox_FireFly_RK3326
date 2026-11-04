@@ -35,6 +35,8 @@ DEFAULTS = {
         "OK", "Yes", "No", "On my way", "Where are you?", "Can't talk now",
         "All good here", "Need help", "Copy that", "Thanks!",
     ],
+    "stump_wifi": True,              # chat with Stumps over the local network when they're on it
+    "stump_prefer": "wifi",          # the route a Stump uses for your DMs while you're on its network
     "voice_to_sd": True,             # copy every voice note to the SD card as a WAV
     "voice_export_dir": "auto",      # auto = /roms(2)/firefly-voice, visible on a computer
     "screen_rotation": "auto",       # auto | 0 | 90 | 180 | 270 (clockwise); Select+R1 cycles it

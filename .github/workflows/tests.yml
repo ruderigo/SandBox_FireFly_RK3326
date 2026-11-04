@@ -51,6 +51,10 @@ jobs:
         timeout-minutes: 3
         run: python tests/run_radio.py
 
+      - name: Chat with a Stump over Wi-Fi (fake web API)
+        timeout-minutes: 3
+        run: python tests/run_stumpweb.py
+
       - name: The local network, followed live
         timeout-minutes: 3
         run: python tests/run_lan.py

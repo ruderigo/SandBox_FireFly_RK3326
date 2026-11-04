@@ -92,6 +92,37 @@ try:
     found = lan.find_stumps(["127.0.0.1", "255.255.255.255"], wait=2.0)
     check(node_hex in found, f"the same Stump answers STUMP? on the LAN: {found.get(node_hex, {}).get('name')} "
                              f"{found.get(node_hex, {}).get('http')}")
+    print("chat over Wi-Fi (the Stump's web API)", flush=True)
+    core.lan.poke()
+    check(wait(lambda: core.web.get(node_hex) is not None and core.web[node_hex].online, 60),
+          "greeted the Stump over Wi-Fi (/hello, both sides signed)")
+    web = core.web.get(node_hex)
+    if web is not None and web.online:
+        print(f"     FireFly is {web.nick} at {web.base}", flush=True)
+        mid = core.send(node_hex, "hello over Wi-Fi")
+        check(wait(lambda: core.store.message(mid)["state"] == "delivered" and core.store.message(mid)["method"] == "wifi", 20),
+              "a line sent over Wi-Fi: delivered, method wifi")
+        # A person on the Stump's own web chat (a browser: it keeps the Stump's cookie).
+        import http.cookiejar, urllib.request, json as _json
+        jar = http.cookiejar.CookieJar()
+        guest = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPCookieProcessor(jar))
+        gbase = web.base.replace(web.base.split("//")[1].split("/")[0].split(":")[0], "127.0.0.1")
+        guest.open(gbase + "/", timeout=8).read()
+        guest.open(gbase + "/rrc/poll?room=main&since=0", timeout=8).read()
+        gnick = _json.loads(guest.open(gbase + "/rrc/poll?room=main&since=0", timeout=8).read())["nick"]
+        print(f"     web guest is {gnick}", flush=True)
+        req = urllib.request.Request(gbase + "/rrc/send", data=f"/msg {web.nick} hi from the web chat".encode(), method="POST")
+        guest.open(req, timeout=8).read()
+        check(wait(lambda: any("hi from the web chat" in m["content"] and m["method"] == "wifi"
+                                for m in core.store.messages(node_hex) if not m["outgoing"]), 20),
+              "a DM from a web-chat user arrives over Wi-Fi as [DM] <guest>: …")
+        core.send(node_hex, f"/msg {gnick} hi back from FireFly")
+        def guest_got():
+            d = _json.loads(guest.open(gbase + "/rrc/poll?room=main&since=0", timeout=8).read())
+            return any("hi back from FireFly" in str(x.get("body")) for x in d.get("dms", []))
+        check(wait(guest_got, 20), "FireFly's DM reaches the web-chat user")
+        core.send(node_hex, "/join #wifitest")
+        check(wait(lambda: core.stump_state[node_hex].room == "wifitest", 20), "/join over Wi-Fi moves FireFly's room")
     core.start_stump_auth(node_hex)
     check(wait(lambda: core.auth_state(node_hex).state == stump.AuthSession.OK, 120), "/auth handshake: AUTH-OK")
 finally:

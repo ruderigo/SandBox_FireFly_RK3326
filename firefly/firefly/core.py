@@ -63,6 +63,7 @@ class Core:
         self.running = False
         self.radio = None
         self.lan = None
+        self.web = {}               # Stump lxmf hex -> stumpweb.StumpWeb (chat over Wi-Fi)
         self.voice_export_status = None   # (folder, copied, last error)
         self._blocked = set()
         self.started_at = time.time()
@@ -139,6 +140,8 @@ class Core:
         lan = getattr(self, "lan", None)
         if lan:
             lan.stop()
+        for w in list(getattr(self, "web", {}).values()):
+            w.stop()
         try:
             self.router.exit_handler()
         except Exception:
@@ -369,6 +372,11 @@ class Core:
             return None
         if peer_hex in self.stumps:
             text, title = stump.safe_for_stump(text, title)
+        web = self.web.get(peer_hex)
+        if web is not None and web.online and method != "propagated" and self.settings.get("stump_wifi", True):
+            msg_id = self.store.add_message(peer_hex, True, text, "sending", title=title, method="wifi")
+            threading.Thread(target=self._send_web, args=(web, msg_id, peer_hex, text, title), daemon=True).start()
+            return msg_id
         msg_id = self.store.add_message(peer_hex, True, text, "pending", title=title)
         threading.Thread(target=self._send_worker, args=(msg_id, peer_hex, text, method, title),
                          daemon=True).start()
@@ -383,6 +391,31 @@ class Core:
                 time.sleep(0.5)
                 ident = RNS.Identity.recall(dest_hash)
         return ident
+
+    def _send_web(self, web, msg_id, peer_hex, text, title):
+        """Stump chat over the local network; LoRa (LXMF, directly) if that fails."""
+        try:
+            web.send(text)
+            self.store.update_message(msg_id, state="delivered", method="wifi")
+        except Exception as e:
+            self.log(f"Wi-Fi send to {web.name} failed ({e}); trying LoRa")
+            self.store.update_message(msg_id, state="pending", method=None, reason="Wi-Fi failed: trying LoRa")
+            self._send_worker(msg_id, peer_hex, text, "auto", title)
+
+    def sync_web(self, lan_stumps):
+        """The Stumps on the local network now: start or stop their Wi-Fi sessions."""
+        from .stumpweb import StumpWeb
+        want = {k: v for k, v in lan_stumps.items() if self.settings.get("stump_wifi", True)}
+        for k in list(self.web):
+            if k not in want or self.web[k].base != (want[k].get("here") or (want[k].get("http") or [""])[0]).rstrip("/"):
+                self.web.pop(k).stop()
+        for k, info in want.items():
+            if k not in self.web and (info.get("here") or info.get("http")):
+                if k not in self.stumps:          # met on the network first: it's a Stump all the same
+                    self._on_stump_beacon(k, info["name"], info.get("release") or "on this network")
+                w = StumpWeb(self, info)
+                self.web[k] = w
+                w.start()
 
     def _send_worker(self, msg_id, peer_hex, text, method, title):
         dest_hash = bytes.fromhex(peer_hex)

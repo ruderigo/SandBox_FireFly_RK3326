@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.9.1 (sandbox)
+Build 51 (Stump 1.0.0-beta.51).
+- **Chat with Stumps over Wi-Fi.** 0.9.0 listed the Stumps on the network
+  but still chatted over LoRa only, so with no LoRa path (Heltec unplugged,
+  or a Stump with no radio) Stump chat failed with "not delivered (Stump chat
+  only goes directly)". Now FireFly greets each Stump on the network through
+  its web API and chats over Wi-Fi:
+  - `/hello`, both ways: the Stump signs a one-time code with its identity,
+    checked against its LXMF address; FireFly answers with the signature
+    `/auth` uses. A Stump that can't prove who it is gets nothing.
+  - Polling every 2 s (backing off to 30 s on failures, with jitter); room
+    lines, DMs and voice notes arrive in the same conversation as over LoRa,
+    in the same form, filed by room. DMs that waited at the Stump arrive on
+    the first poll; old room scrollback is not imported.
+  - Sending: lines, `/msg nick` (web-chat users, `nick@otherstump` on a
+    chain), `/join`, `/rooms`, `/board`, `/post`, `/auth`. A failed Wi-Fi send
+    falls back to LoRa by itself; a Stump that restarted is greeted again.
+  - A Stump met only on the network counts as a Stump.
+  - SETUP → *Chat with Stumps over Wi-Fi* (on by default). The chat header
+    and NETWORK say "over Wi-Fi as <nick>", or "Wi-Fi lost: LoRa".
+- Tested against the real Stump 1.0.0-beta.51 (`tests/run_real_stump.py`):
+  greeting, a line, a DM from a web-chat user and the answer back, `/join`,
+  `/auth` over Wi-Fi. `tests/run_stumpweb.py` (new, in CI) against a fake.
+
 ## 0.9.0 (sandbox)
 **The local network, exactly as EmulationStation set it up.**
 - FireFly takes whatever network the handheld is on (Wi-Fi chosen in
