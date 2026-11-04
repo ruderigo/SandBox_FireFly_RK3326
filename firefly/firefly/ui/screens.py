@@ -273,7 +273,15 @@ class ChatScreen(Screen):
         else:
             sel = self._selected(msgs)
             maxw = W * 3 // 4
-            blocks = [(m, *self._layout(m, f, maxw, core.is_stump(self.peer))) for m in msgs]
+            is_stump = core.is_stump(self.peer)
+            blocks, room_shown = [], None
+            for m in msgs:
+                # The room label only where the room changes, not on every line of it.
+                room = m["title"] if is_stump and not m["outgoing"] and (m["title"] or "").startswith("#") else None
+                label = room is not None and stump.room_name(room) != room_shown
+                if room is not None:
+                    room_shown = stump.room_name(room)
+                blocks.append((m, *self._layout(m, f, maxw, is_stump, label)))
             # Virtual column, newest at the bottom: y measured upward from the bottom edge.
             bottom = H - f.line - 16
             view_h = bottom - top
@@ -306,13 +314,13 @@ class ChatScreen(Screen):
         if msgs and self.offset > 0:
             D.text(surf, f.mono_small, "▼ newer below (R1)", (W - 12, self.app.content_top), T.EMBER, right=True)
 
-    def _layout(self, m, f, maxw, is_stump):
+    def _layout(self, m, f, maxw, is_stump, room_label=True):
         """Returns (height, painter) for one message bubble."""
         W = self.app.screen_w
         out = m["outgoing"]
         lines = []   # (font, text, color)
         if is_stump and not out:
-            if m["title"] and m["title"].startswith("#"):
+            if room_label and m["title"] and m["title"].startswith("#"):
                 lines.append((f.mono_small, "#" + stump.room_name(m["title"]), T.EMBER))   # the room this batch belongs to
             for parsed in stump.parse_message(m["content"], m["title"] or ""):
                 lines += [(f.body, ln, c) for ln, c in _stump_render(parsed, f, maxw - 20)]

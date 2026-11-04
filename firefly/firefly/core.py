@@ -112,6 +112,12 @@ class Core:
         for p in self.store.peers("lxmf"):   # remember which saved peers are Stumps
             if p["stump"]:
                 self.stumps[p["hash"]] = (p["stump"], p["stump_ver"])
+        if not self.settings.get("stump_times_repaired"):
+            n = self.store.repair_stump_times(list(self.stumps))
+            if n:
+                self.log(f"put {n} Stump line(s) back in the order they arrived")
+            self.settings["stump_times_repaired"] = True
+            self.settings.save()
         self._apply_propagation_setting()
         # Messages that were in flight when the app closed can't be resumed.
         for m in self.store.pending_outgoing():
@@ -521,7 +527,10 @@ class Core:
             # Unknown sender identity: ask for their path so we learn who they are.
             RNS.Transport.request_path(lxm.source_hash)
         self.store.upsert_peer(peer, "lxmf", heard=True)
-        self.store.add_message(peer, False, content, "received", ts=lxm.timestamp or time.time(),
+        # A Stump's lines are filed by when they arrive: its clock may be unset (a CAM
+        # has no battery clock) and its chat is never stored and forwarded.
+        ts = time.time() if peer in self.stumps else (lxm.timestamp or time.time())
+        self.store.add_message(peer, False, content, "received", ts=ts,
                                title=lxm.title_as_string() if lxm.title else "",
                                method=_method_name(lxm.method), lxm_hash=lxm_hash,
                                rssi=getattr(lxm, "rssi", None), snr=getattr(lxm, "snr", None),

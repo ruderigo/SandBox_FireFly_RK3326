@@ -103,10 +103,14 @@ check(wait(lambda: any("a DM waiting for you" in m["content"] for m in core.stor
       "a DM waiting at the Stump arrives on the first poll")
 check(not any("old scrollback" in m["content"] for m in core.store.messages(NODE_LX)), "the room's scrollback isn't imported")
 add("msg", "carol", "new room line")
+state["msgs"][-1]["ts"] = 86400.0                      # a Stump whose clock isn't set (1970)
 add("msg", "R36-Tester", "my own line echoed")
 check(wait(lambda: any(m["content"] == "<carol> new room line" and m["title"] == "#lora-mesh"
                        for m in core.store.messages(NODE_LX)), 10), "new room lines arrive, filed under their room")
 check(not any("my own line echoed" in m["content"] for m in core.store.messages(NODE_LX)), "own lines aren't shown twice")
+carol = [m for m in core.store.messages(NODE_LX) if "new room line" in m["content"]][0]
+check(time.time() - carol["ts"] < 60, "filed by arrival, not by the Stump's unset clock")
+check(core.store.messages(NODE_LX)[-1]["id"] == carol["id"], "...so it is the newest line in the chat")
 mid = core.send(NODE_LX, "hello over Wi-Fi")
 check(wait(lambda: core.store.message(mid)["state"] == "delivered", 10) and "hello over Wi-Fi" in state["sent"],
       "sending goes over Wi-Fi")
@@ -132,6 +136,27 @@ core.sync_web({NODE_LX: info})
 w2 = core.web[NODE_LX]
 check(wait(lambda: w2.state == w2.REFUSED, 10) and not state["greeted"],
       f"a Stump that can't prove who it is gets nothing ({w2.detail})")
+print("old rows from 0.9.1, and how the chat shows a room")
+P2 = "ef" * 16
+a = core.store.add_message(P2, False, "<x> first", "received", ts=time.time() - 50, title="#lora-mesh")
+b2 = core.store.add_message(P2, False, "<x> second (Stump clock off)", "received", ts=1000.0, title="#lora-mesh")
+c = core.store.add_message(P2, False, "<x> third (Stump clock off)", "received", ts=1001.0, title="#lora-mesh")
+check(core.store.repair_stump_times([P2]) == 2, "two misfiled lines found")
+order = [m["id"] for m in core.store.messages(P2)]
+check(order == [a, b2, c], "back in the order they arrived")
+os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+from firefly.ui.app import App
+from firefly.ui import screens
+core.stumps[P2] = ("X", "1")
+core.store.add_message(P2, False, "<y> in main", "received", title="#main")
+core.store.add_message(P2, False, "<y> lora again", "received", title="#lxmf")
+app = App(core, size=(640, 480))
+seen = []
+orig = screens.ChatScreen._layout
+screens.ChatScreen._layout = lambda self, m, f, maxw, is_stump, room_label=True: (seen.append(room_label), orig(self, m, f, maxw, is_stump, room_label))[1]
+app.push(screens.ChatScreen(app, P2)); app.render()
+screens.ChatScreen._layout = orig
+check(seen == [True, False, False, True, True], f"the room label only where the room changes: {seen}")
 core.stop(); srv.shutdown()
 print("ALL PASSED" if ok else "SOME FAILED")
 sys.stdout.flush(); os._exit(0 if ok else 1)
