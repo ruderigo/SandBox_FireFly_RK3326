@@ -14,7 +14,7 @@ re-implementation, so compatibility comes from the reference code itself.
 
 ![FireFly screens: chats, a conversation, a Stump node, the keyboard, network and setup](docs/screenshots.png)
 
-**Status:** v0.9.0 (sandbox: beta testing against [SandBox_Stump_On](https://github.com/ruderigo/SandBox_Stump_On); stable FireFly is [FireFly_RK3326_R36MAX_R36S](https://github.com/ruderigo/FireFly_RK3326_R36MAX_R36S)). Runs on RK3326 handhelds with the dArkOS image of
+**Status:** v0.9.1 (sandbox: beta testing against [SandBox_Stump_On](https://github.com/ruderigo/SandBox_Stump_On); stable FireFly is [FireFly_RK3326_R36MAX_R36S](https://github.com/ruderigo/FireFly_RK3326_R36MAX_R36S)). Runs on RK3326 handhelds with the dArkOS image of
 [arkos4clone](https://github.com/lcdyk0517/arkos4clone); tested on an R36MAX.
 See [Supported devices](#supported-devices).
 
@@ -177,6 +177,13 @@ Ports entry.
   shows the network's name, address, whether it reaches the internet, the
   Reticulum devices found nearby (Sideband, NomadNet, MeshChat, other
   FireFlys), and the **Stumps on the same network** with their web address.
+- **Chat with Stumps over Wi-Fi.** A Stump on the same network is greeted
+  through its web API (`/hello`: the Stump proves its identity, FireFly signs
+  with yours, so you're one person on Wi-Fi and LoRa) and the chat with it
+  goes over Wi-Fi: rooms, DMs to its web-chat users and to people on chained
+  Stumps (`/msg nick@stump`), `/board`, `/post`, `/auth`. Much faster than
+  LoRa; LoRa takes over by itself when the Wi-Fi goes. The chat header says
+  which route is in use.
 - **Clear radio status**: online (with the board's chip and firmware), no
   radio plugged in, searching, or *refused*: an RNode answered but won't use
   these settings (for example a frequency outside its band), or its firmware
@@ -274,6 +281,7 @@ From the `firefly/` folder:
     python3 tests/run_propagation.py   # offline peer: fallback to a propagation node
     python3 tests/run_radio.py         # radio manager against simulated RNodes (no hardware needed)
     STUMP_DIR=~/Stump python3 tests/run_real_stump.py   # against a real computer Stump (see the file); skipped without STUMP_DIR
+    python3 tests/run_stumpweb.py      # chat with a Stump over Wi-Fi, against a fake of its web API
     python3 tests/run_lan.py           # the handheld's network, read-only and followed live; STUMP? answers
     python3 tests/run_stump_protocol.py # Stump 1.0.0-beta.34 lines: #lora-mesh, nick@stump, ⧗, [LoRa]
     python3 tests/run_radiojson.py     # the Stump provisioner's radio.json, and the network passphrase
