@@ -123,6 +123,16 @@ try:
         check(wait(guest_got, 20), "FireFly's DM reaches the web-chat user")
         core.send(node_hex, "/join #wifitest")
         check(wait(lambda: core.stump_state[node_hex].room == "wifitest", 20), "/join over Wi-Fi moves FireFly's room")
+    if web is not None:
+        import re as _re, urllib.request as _u, html as _h
+        page = _u.build_opener(_u.ProxyHandler({})).open(web.base + "/address", timeout=8).read().decode("utf-8", "replace")
+        links = sorted(set(_h.unescape(x) for x in _re.findall(r"(lxm[af]://[^\s\"'<]+)", page)))
+        from firefly import addresses as _a
+        good = [l for l in links if (lambda p: p and p["address"] == node_hex and p["key"] is not None
+                                      and _a.identity_for(node_hex, p["key"]) is not None)(_a.parse(l))]
+        # The page shows its lxmf:// link as text; its lxma:// code is only in the QR picture.
+        check(len(good) >= 1 and _a.parse(good[0])["stump"], f"the Stump's /address link reads, names it a Stump, "
+                                                             f"and its key checks out: {good[0][:60] if good else None}…")
     core.start_stump_auth(node_hex)
     check(wait(lambda: core.auth_state(node_hex).state == stump.AuthSession.OK, 120), "/auth handshake: AUTH-OK")
 finally:

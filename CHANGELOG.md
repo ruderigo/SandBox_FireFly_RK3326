@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.9.3 (sandbox)
+Build 53 (Stump 1.0.0-beta.53). Working with other LXMF apps, after reading
+Sideband, NomadNet, MeshChat and LXMF's code, and the Stump and Android
+teams' work (Stump beta.52-53, FireFly for Android 0.6.0-beta).
+- **Every app's address code.** *Show QR code* (yours, NETWORK → Y; a
+  contact's, its Y menu) now switches with ←→ between FireFly's
+  `lxmf://<address>?key=…` (FireFly apps, Stumps; `stump=` for a Stump),
+  `lxma://<address>:<key>` (Columba, MeshChatX, the T-Deck LXMF Messenger)
+  and the bare address (Sideband, NomadNet). The codes carrying a key let
+  the other app write to you before your announce reaches it.
+- **Add contact takes any of them** (PEERS → + → *Paste a link*, handy with
+  a USB keyboard): the key is checked against the address (a code whose key
+  isn't its address's is refused, "not trusted"), then handed to Reticulum,
+  so you can write at once. A Stump's code adds a Stump. Same rules as
+  FireFly for Android and the Stump's `/address` page.
+- **Requests from Sideband and MeshChat are declined politely.** Their
+  location/telemetry requests, pings, echoes and signal reports
+  (`FIELD_COMMANDS`) used to show as an empty message. Now: a short note
+  ("⊘ Asked for location and telemetry: declined"), and one reply a contact
+  can read, at most once an hour each, never to a Stump.
+- **Formatted messages rendered** (`FIELD_RENDERER`): Markdown (NomadNet,
+  Sideband), Micron (NomadNet) and BBCode become headings, bullets, tasks,
+  quotes, code and "text (url)" links instead of raw symbols.
+- README: *Working with other LXMF apps*, layer by layer.
+- Tests: `run_interop.py` (new, in CI): every code format both ways, forged
+  keys, the lxma:// QR decoded back with zbarimg, contacts writable at once,
+  commands declined once an hour and never to a Stump, Markdown, Micron and
+  BBCode. The real-Stump test reads beta.53's `/address` link.
+
 ## 0.9.2 (sandbox)
 - **Fixed: new lines from a Stump showed up among old ones ("yesterday").**
   0.9.1 filed lines received over Wi-Fi by the Stump's own clock, which can

@@ -324,6 +324,8 @@ class ChatScreen(Screen):
                 lines.append((f.mono_small, "#" + stump.room_name(m["title"]), T.EMBER))   # the room this batch belongs to
             for parsed in stump.parse_message(m["content"], m["title"] or ""):
                 lines += [(f.body, ln, c) for ln, c in _stump_render(parsed, f, maxw - 20)]
+        elif m["content"] and not out and m.get("renderer") in (1, 2, 3):
+            lines = _formatted(m["content"], m["renderer"], f, maxw - 20)
         elif m["content"]:
             lines = [(f.body, ln, T.TEXT) for ln in D.wrap(f.body, m["content"], maxw - 20)]
         if m.get("audio_mode") is not None:
@@ -443,6 +445,24 @@ def _stump_render(p, f, width):
     return [(ln, T.TEXT) for ln in D.wrap(f.body, p.get("text", ""), width)]
 
 
+def _formatted(text, renderer, f, width):
+    """A Markdown, Micron or BBCode message (LXMF FIELD_RENDERER) as styled lines."""
+    from .. import markup
+    out = []
+    for style, s in markup.render(text, renderer):
+        if style == "rule":
+            out.append((f.mono_small, "─" * max(4, width // max(1, f.mono_small.size("─")[0])), T.MUTED))
+            continue
+        font, color, prefix = {"h1": (f.body_bold, T.EMBER_BRIGHT, ""), "h2": (f.body_bold, T.EMBER, ""),
+                               "quote": (f.body, T.MUTED, "▏ "), "code": (f.mono_small, T.TEXT, ""),
+                               "li": (f.body, T.TEXT, "")}.get(style, (f.body, T.TEXT, ""))
+        wrapped = D.wrap(font, prefix + s, width) if s else [""]
+        out += [(font, ln, color) for ln in wrapped]
+    while out and not out[-1][1].strip():
+        out.pop()
+    return out
+
+
 def _stump_text(p):
     k = p["kind"]
     return {"join": lambda: f"✓ {p['nick']} joined", "part": lambda: f"✗ {p['nick']} left",
@@ -492,7 +512,7 @@ class PeerActions:
             f"Stump node: {p.get('stump')} ({p.get('stump_ver')})" if p.get("stump") else "",
         ]))))
         items.append(("Show QR code", lambda: self.app.push(QrScreen(
-            self.app, peer_label(p, peer), peer, "LXMF address"))))
+            self.app, peer_label(p, peer), core.address_codes(peer)))))
         items.append(("Delete conversation and contact", lambda: self._delete()))
         items.append(("Block", lambda: self._block()))
         return items
@@ -548,7 +568,12 @@ class PeersTab(ListScreen):
         row = rows[self.sel]
         if row.get("add"):
             if action == "a":
-                self.app.push(Compose(self.app, "LXMF address (32 hex)", self._add, mode="hex", max_len=32))
+                self.app.push(Menu(self.app, "Add contact", [
+                    ("Type the address (32 hex)", lambda: self.app.push(Compose(
+                        self.app, "LXMF address (32 hex)", self._add, mode="hex", max_len=32))),
+                    ("Paste a link (lxma://, lxmf://), e.g. with a USB keyboard", lambda: self.app.push(Compose(
+                        self.app, "Address or link", self._add, max_len=300, show_packet_meter=False))),
+                ], subtitle="A link with a key lets you write before they announce"))
             return
         if action == "a":
             self.app.push(ChatScreen(self.app, row["hash"]))
@@ -559,8 +584,10 @@ class PeersTab(ListScreen):
 
     def _add(self, text):
         try:
-            h = self.app.core.add_contact(text)
-            self.app.toast("Added. Asking the network for a path…")
+            h, how = self.app.core.add_contact(text)
+            self.app.toast({"key": "Added with its key: you can write now.",
+                            "stump": "Added as a Stump.",
+                            "plain": "Added. Asking the network for a path…"}[how], 3)
             self.app.push(ChatScreen(self.app, h))
         except ValueError as e:
             self.app.toast(str(e))
@@ -611,7 +638,7 @@ class NetworkTab(Screen):
         elif action == "y":
             self.app.push(Menu(self.app, "Network", [
                 ("Show my address as a QR code", lambda: self.app.push(QrScreen(
-                    self.app, core.settings["display_name"], core.address, "my LXMF address: scan it to add me"))),
+                    self.app, core.settings["display_name"], core.address_codes(core.address)))),
                 ("Look at the network again (Stumps on it too)", lambda: (core.lan and core.lan.poke(),
                                                                            self.app.toast("Looking at the network…"))),
                 ("Search for RNodes now", lambda: (core.radio and core.radio.search_now(),

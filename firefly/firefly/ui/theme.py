@@ -44,4 +44,5 @@ class Fonts:
         self.mono_small = pygame.font.Font(mono, max(11, base * 4 // 5))
         self.mono_big = pygame.font.Font(_find("DejaVuSansMono-Bold.ttf") or mono, base * 5 // 4)
         self.body = pygame.font.Font(body or mono, base)
+        self.body_bold = pygame.font.Font(_find("DejaVuSans-Bold.ttf") or body or mono, base)
         self.line = self.mono.get_linesize()

@@ -290,15 +290,22 @@ class Info(Screen):
 
 
 class QrScreen(Screen):
-    """An address as a QR code, big and black on white so phones read it off the screen."""
-    hints = [("B", "back")]
+    """An address as a QR code, big and black on white so phones read it off the screen.
+    `codes` is addresses.codes(): one code per way apps read addresses; left/right switches."""
+    hints = [("←→", "app"), ("B", "back")]
 
-    def __init__(self, app, title, text, caption=""):
+    def __init__(self, app, title, codes, caption=""):
         super().__init__(app)
-        self.title, self.text, self.caption = title, text, caption
+        if isinstance(codes, str):                   # just an address
+            codes = [("Address", caption or "any LXMF app", codes)]
+        self.title, self.codes, self.i = title, codes, 0
+        self.address = next((c[2] for c in codes if len(c[2]) == 32), codes[-1][2][:32])
+        self._make()
+
+    def _make(self):
         try:
             from ..qr import matrix
-            self.m = matrix(text)
+            self.m = matrix(self.codes[self.i][2])
             self.error = None
         except Exception as e:          # never take the app down for a picture
             self.m, self.error = None, f"QR code unavailable: {e}"
@@ -306,26 +313,31 @@ class QrScreen(Screen):
     def handle(self, action):
         if action in ("b", "a"):
             self.app.pop()
+        elif action in ("left", "right") and len(self.codes) > 1:
+            self.i = (self.i + (1 if action == "right" else -1)) % len(self.codes)
+            self._make()
 
     def draw(self, surf, f):
         W, H = surf.get_size()
         top = self.app.content_top            # the title is drawn above by the app
-        bottom = 2 * f.line + 8 + (f.line + 16)  # address + caption, then the hint bar
+        label, who, _ = self.codes[self.i]
+        tabs = "   ".join(("[" + c[0] + "]") if k == self.i else c[0] for k, c in enumerate(self.codes))
+        D.text(surf, f.mono_small, tabs, (W // 2, top), T.EMBER, center=True)
+        top += f.line
+        bottom = 2 * f.line + 8 + (f.line + 16)  # address + who reads it, then the hint bar
         avail = min(W - 32, H - top - bottom - 8)
         if self.m is None:
             D.text(surf, f.mono_small, self.error, (16, top + f.line * 2), T.ERROR)
-        else:
-            n = len(self.m) + 8                     # 4 modules of white quiet zone each side
-            px = max(1, avail // n)
-            size = px * n
-            x0, y0 = (W - size) // 2, top
-            pygame.draw.rect(surf, (255, 255, 255), (x0, y0, size, size))
-            for r, row in enumerate(self.m):
-                for c, dark in enumerate(row):
-                    if dark:
-                        pygame.draw.rect(surf, (0, 0, 0), (x0 + (c + 4) * px, y0 + (r + 4) * px, px, px))
-            y = y0 + size + 8
-            D.text(surf, f.mono_small, D.spaced_hash(self.text) if len(self.text) == 32 else self.text,
-                   (W // 2, y), T.TEXT, center=True)
-            if self.caption:
-                D.text(surf, f.mono_small, self.caption, (W // 2, y + f.line), T.MUTED, center=True)
+            return
+        n = len(self.m) + 8                     # 4 modules of white quiet zone each side
+        px = max(1, avail // n)
+        size = px * n
+        x0, y0 = (W - size) // 2, top
+        pygame.draw.rect(surf, (255, 255, 255), (x0, y0, size, size))
+        for r, row in enumerate(self.m):
+            for c, dark in enumerate(row):
+                if dark:
+                    pygame.draw.rect(surf, (0, 0, 0), (x0 + (c + 4) * px, y0 + (r + 4) * px, px, px))
+        y = y0 + size + 8
+        D.text(surf, f.mono_small, D.spaced_hash(self.address), (W // 2, y), T.TEXT, center=True)
+        D.text(surf, f.mono_small, "for " + who, (W // 2, y + f.line), T.MUTED, center=True)
