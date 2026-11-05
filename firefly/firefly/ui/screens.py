@@ -324,6 +324,8 @@ class ChatScreen(Screen):
                 lines.append((f.mono_small, "#" + stump.room_name(m["title"]), T.EMBER))   # the room this batch belongs to
             for parsed in stump.parse_message(m["content"], m["title"] or ""):
                 lines += [(f.body, ln, c) for ln, c in _stump_render(parsed, f, maxw - 20)]
+        elif m["content"] and not out and m.get("renderer") in (1, 2, 3):
+            lines = _formatted(m["content"], m["renderer"], f, maxw - 20)
         elif m["content"]:
             lines = [(f.body, ln, T.TEXT) for ln in D.wrap(f.body, m["content"], maxw - 20)]
         if m.get("audio_mode") is not None:
@@ -354,9 +356,10 @@ class ChatScreen(Screen):
             if m["snr"] is not None:
                 meta += f"  SNR {m['snr']:.1f}"
         lh = f.body.get_linesize()
-        body_h = sum(fn.get_linesize() for fn, _, _ in lines)
+        body_h = sum(c if fn is None else fn.get_linesize() for fn, _, c in lines)
         h = body_h + f.mono_small.get_linesize() + 18
-        widths = [fn.size(t)[0] for fn, t, _ in lines] + [f.mono_small.size(meta + "  " + mark)[0]]
+        widths = [sum(sf.size(st)[0] for sf, st, _, _ in t) if fn is None else fn.size(t)[0]
+                  for fn, t, _ in lines] + [f.mono_small.size(meta + "  " + mark)[0]]
         bw = min(maxw, max(widths) + 22)
 
         def paint(surf, y, selected=False):
@@ -367,6 +370,17 @@ class ChatScreen(Screen):
                 pygame.draw.rect(surf, T.EMBER_BRIGHT, rect.inflate(4, 4), width=3, border_radius=10)
             yy = rect.y + 6
             for fn, t, c in lines:
+                if fn is None:                       # styled segments (formatted messages)
+                    xx = rect.x + 11
+                    for sf, st, sc, bg in t:
+                        sw = sf.size(st)[0]
+                        if bg is not None:            # inline code keeps one background, spaces included
+                            pygame.draw.rect(surf, bg, (xx - 1, yy + 1, sw + 2, sf.get_linesize() - 1),
+                                             border_radius=3)
+                        D.text(surf, sf, st, (xx, yy), sc)
+                        xx += sw
+                    yy += c
+                    continue
                 D.text(surf, fn, t, (rect.x + 11, yy), c)
                 yy += fn.get_linesize()
             D.text(surf, f.mono_small, meta, (rect.x + 11, yy), T.DIM)
@@ -443,6 +457,69 @@ def _stump_render(p, f, width):
     return [(ln, T.TEXT) for ln in D.wrap(f.body, p.get("text", ""), width)]
 
 
+CODE_BG = (0x12, 0x0e, 0x0b)
+
+
+def _formatted(text, renderer, f, width):
+    """A Markdown, Micron or BBCode message (LXMF FIELD_RENDERER) as styled lines:
+    each entry (None, [(font, text, colour, background)], height), drawn segment by segment."""
+    from .. import markup
+    out = []
+    for style, spans in markup.render(text, renderer):
+        if style == "rule":
+            dash = f.mono_small.size("─")[0] or 8
+            out.append((f.mono_small, "─" * max(4, width // dash), T.MUTED))
+            continue
+        base_color = {"h1": T.EMBER_BRIGHT, "h2": T.EMBER, "quote": T.MUTED}.get(style, T.TEXT)
+        if style == "quote":
+            spans = [(frozenset(), "▏ ")] + list(spans)
+        if style == "code":
+            spans = [(frozenset({"code"}), markup.plain(spans) or " ")]
+        segs = []
+        for flags, t in spans:
+            code = "code" in flags
+            font = f.styled("mono" if code else "body", bold="b" in flags, italic="i" in flags,
+                            underline="u" in flags or "link" in flags, strike="s" in flags)
+            color = T.EMBER_BRIGHT if "link" in flags else (T.TEXT if code else base_color)
+            segs.append((font, t, color, CODE_BG if code else None))
+        out += _wrap_segments(segs, width, f.body.get_linesize()) or [(f.body, "", T.TEXT)]
+    while out and out[-1][0] is not None and not out[-1][1].strip():
+        out.pop()
+    return out
+
+
+def _wrap_segments(segs, width, min_h):
+    """Word-wrap styled segments to a pixel width -> [(None, segments, height)]."""
+    import re as _re
+    lines, cur, w = [], [], 0
+
+    def push():
+        if cur:
+            h = max([min_h] + [fn.get_linesize() for fn, _, _, _ in cur])
+            lines.append((None, list(cur), h))
+
+    for font, text, color, bg in segs:
+        for tok in _re.findall(r"\S+|\s+", text):
+            tw = font.size(tok)[0]
+            if tok.isspace():
+                if cur:
+                    cur.append((font, tok, color, bg)); w += tw
+                continue
+            if w + tw > width and cur:
+                while cur and cur[-1][1].isspace():          # no trailing space at a break
+                    w -= cur[-1][0].size(cur[-1][1])[0]; cur.pop()
+                push(); cur, w = [], 0
+            while tw > width and len(tok) > 1:               # a word longer than a line
+                cut = len(tok)
+                while cut > 1 and font.size(tok[:cut])[0] > width - w:
+                    cut -= 1
+                cur.append((font, tok[:cut], color, bg)); push(); cur, w = [], 0
+                tok = tok[cut:]; tw = font.size(tok)[0]
+            cur.append((font, tok, color, bg)); w += tw
+    push()
+    return lines
+
+
 def _stump_text(p):
     k = p["kind"]
     return {"join": lambda: f"✓ {p['nick']} joined", "part": lambda: f"✗ {p['nick']} left",
@@ -492,7 +569,7 @@ class PeerActions:
             f"Stump node: {p.get('stump')} ({p.get('stump_ver')})" if p.get("stump") else "",
         ]))))
         items.append(("Show QR code", lambda: self.app.push(QrScreen(
-            self.app, peer_label(p, peer), peer, "LXMF address"))))
+            self.app, peer_label(p, peer), core.address_codes(peer)))))
         items.append(("Delete conversation and contact", lambda: self._delete()))
         items.append(("Block", lambda: self._block()))
         return items
@@ -548,7 +625,12 @@ class PeersTab(ListScreen):
         row = rows[self.sel]
         if row.get("add"):
             if action == "a":
-                self.app.push(Compose(self.app, "LXMF address (32 hex)", self._add, mode="hex", max_len=32))
+                self.app.push(Menu(self.app, "Add contact", [
+                    ("Type the address (32 hex)", lambda: self.app.push(Compose(
+                        self.app, "LXMF address (32 hex)", self._add, mode="hex", max_len=32))),
+                    ("Paste a link (lxma://, lxmf://), e.g. with a USB keyboard", lambda: self.app.push(Compose(
+                        self.app, "Address or link", self._add, max_len=300, show_packet_meter=False))),
+                ], subtitle="A link with a key lets you write before they announce"))
             return
         if action == "a":
             self.app.push(ChatScreen(self.app, row["hash"]))
@@ -559,8 +641,10 @@ class PeersTab(ListScreen):
 
     def _add(self, text):
         try:
-            h = self.app.core.add_contact(text)
-            self.app.toast("Added. Asking the network for a path…")
+            h, how = self.app.core.add_contact(text)
+            self.app.toast({"key": "Added with its key: you can write now.",
+                            "stump": "Added as a Stump.",
+                            "plain": "Added. Asking the network for a path…"}[how], 3)
             self.app.push(ChatScreen(self.app, h))
         except ValueError as e:
             self.app.toast(str(e))
@@ -611,7 +695,7 @@ class NetworkTab(Screen):
         elif action == "y":
             self.app.push(Menu(self.app, "Network", [
                 ("Show my address as a QR code", lambda: self.app.push(QrScreen(
-                    self.app, core.settings["display_name"], core.address, "my LXMF address: scan it to add me"))),
+                    self.app, core.settings["display_name"], core.address_codes(core.address)))),
                 ("Look at the network again (Stumps on it too)", lambda: (core.lan and core.lan.poke(),
                                                                            self.app.toast("Looking at the network…"))),
                 ("Search for RNodes now", lambda: (core.radio and core.radio.search_now(),

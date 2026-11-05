@@ -44,4 +44,31 @@ class Fonts:
         self.mono_small = pygame.font.Font(mono, max(11, base * 4 // 5))
         self.mono_big = pygame.font.Font(_find("DejaVuSansMono-Bold.ttf") or mono, base * 5 // 4)
         self.body = pygame.font.Font(body or mono, base)
+        self.body_bold = pygame.font.Font(_find("DejaVuSans-Bold.ttf") or body or mono, base)
         self.line = self.mono.get_linesize()
+        self._styled = {}
+
+    _FILES = {("body", False, False): "DejaVuSans.ttf", ("body", True, False): "DejaVuSans-Bold.ttf",
+              ("body", False, True): "DejaVuSans-Oblique.ttf", ("body", True, True): "DejaVuSans-BoldOblique.ttf",
+              ("mono", False, False): "DejaVuSansMono.ttf", ("mono", True, False): "DejaVuSansMono-Bold.ttf",
+              ("mono", False, True): "DejaVuSansMono-Oblique.ttf",
+              ("mono", True, True): "DejaVuSansMono-BoldOblique.ttf"}
+
+    def styled(self, kind="body", bold=False, italic=False, underline=False, strike=False):
+        """A font for formatted text. The real bold and oblique faces when installed
+        (fonts-dejavu-core has the bold ones, fonts-dejavu-extra the oblique), else
+        pygame's synthetic style, so italics always show."""
+        key = (kind, bold, italic, underline, strike)
+        f = self._styled.get(key)
+        if f is None:
+            path = _find(self._FILES[(kind, bold, italic)])
+            plain = _find(self._FILES[(kind, False, False)])
+            f = pygame.font.Font(path or plain, self.base)
+            if path is None:
+                f.set_bold(bold)
+                f.set_italic(italic)
+            f.set_underline(underline)
+            if strike and hasattr(f, "set_strikethrough"):
+                f.set_strikethrough(True)
+            self._styled[key] = f
+        return f

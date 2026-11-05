@@ -61,7 +61,8 @@ class Store:
     def _migrate(self):
         """Add columns introduced after a database was created; existing messages stay."""
         cols = {r[1] for r in self.db.execute("PRAGMA table_info(messages)")}
-        for name, kind in (("audio_mode", "INTEGER"), ("audio_path", "TEXT"), ("audio_secs", "REAL")):
+        for name, kind in (("audio_mode", "INTEGER"), ("audio_path", "TEXT"), ("audio_secs", "REAL"),
+                           ("renderer", "INTEGER")):
             if name not in cols:
                 self.db.execute(f"ALTER TABLE messages ADD COLUMN {name} {kind}")
         self.db.commit()
@@ -115,13 +116,14 @@ class Store:
     # ---------------------------------------------------------------- messages
     def add_message(self, peer, outgoing, content, state, ts=None, title="", method=None, lxm_hash=None,
                     rssi=None, snr=None, verified=True, attachments=None, unread=False,
-                    audio_mode=None, audio_path=None, audio_secs=None):
+                    audio_mode=None, audio_path=None, audio_secs=None, renderer=None):
         cur = self._write(
             "INSERT INTO messages(peer, outgoing, content, title, ts, state, method, lxm_hash, rssi, snr,"
-            " verified, attachments, unread, audio_mode, audio_path, audio_secs)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            " verified, attachments, unread, audio_mode, audio_path, audio_secs, renderer)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (peer, 1 if outgoing else 0, content, title, ts or time.time(), state, method, lxm_hash,
-             rssi, snr, 1 if verified else 0, attachments, 1 if unread else 0, audio_mode, audio_path, audio_secs))
+             rssi, snr, 1 if verified else 0, attachments, 1 if unread else 0, audio_mode, audio_path, audio_secs,
+             renderer))
         return cur.lastrowid
 
     def voice_notes(self, peer, limit=20):

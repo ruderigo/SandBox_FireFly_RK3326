@@ -34,6 +34,21 @@ FIELD_NAMES = {
 }
 
 
+# Sideband's commands (sideband/sense.py, Commands), also sent by MeshChat. FireFly answers none.
+COMMAND_NAMES = {0x00: "a plugin command", 0x01: "location and telemetry", 0x02: "a ping",
+                 0x03: "an echo", 0x04: "a signal report"}
+
+
+def commands_asked(field):
+    """FIELD_COMMANDS is a list of {command id: arguments}. -> the command ids, or []."""
+    out = []
+    if isinstance(field, list):
+        for c in field[:16]:
+            if isinstance(c, dict):
+                out += [k for k in c if isinstance(k, int) and not isinstance(k, bool)]
+    return sorted(set(out))
+
+
 def single_packet_size(text, title=""):
     """LXMF content size the way LXMessage.pack() measures it (limit 295 for one packet)."""
     payload = msgpack.packb([time.time(), title.encode(), text.encode(), {}])
@@ -64,6 +79,7 @@ class Core:
         self.radio = None
         self.lan = None
         self.web = {}               # Stump lxmf hex -> stumpweb.StumpWeb (chat over Wi-Fi)
+        self._declined = {}         # peer -> when FireFly last declined their commands
         self.voice_export_status = None   # (folder, copied, last error)
         self._blocked = set()
         self.started_at = time.time()
@@ -527,6 +543,16 @@ class Core:
             # Unknown sender identity: ask for their path so we learn who they are.
             RNS.Transport.request_path(lxm.source_hash)
         self.store.upsert_peer(peer, "lxmf", heard=True)
+        fields = lxm.fields if isinstance(lxm.fields, dict) else {}
+        renderer = fields.get(LXMF.FIELD_RENDERER)
+        renderer = renderer if isinstance(renderer, int) and not isinstance(renderer, bool) else None
+        asked = commands_asked(fields.get(LXMF.FIELD_COMMANDS))
+        if asked:
+            self._decline_commands(peer, asked)
+            if not content.strip() and not audio and not attachments:
+                # Only a request (Sideband asks for telemetry this way): a short note, no empty bubble.
+                content = ("⊘ Asked for " + " and ".join(COMMAND_NAMES.get(c, "a command") for c in asked)
+                           + ": declined (FireFly doesn't share it)")
         # A Stump's lines are filed by when they arrive: its clock may be unset (a CAM
         # has no battery clock) and its chat is never stored and forwarded.
         ts = time.time() if peer in self.stumps else (lxm.timestamp or time.time())
@@ -534,8 +560,8 @@ class Core:
                                title=lxm.title_as_string() if lxm.title else "",
                                method=_method_name(lxm.method), lxm_hash=lxm_hash,
                                rssi=getattr(lxm, "rssi", None), snr=getattr(lxm, "snr", None),
-                               verified=verified, attachments=", ".join(attachments) or None, unread=True,
-                               **audio)
+                               verified=verified, attachments=", ".join(attachments) or None,
+                               unread=not (asked and content.startswith("⊘ Asked for ")), renderer=renderer, **audio)
         title0 = lxm.title_as_string() if lxm.title else ""
         if peer not in self.stumps and stump.looks_like_stump(content, title0):
             self._on_stump_signal(peer)
@@ -545,6 +571,24 @@ class Core:
             self.stump_state.setdefault(peer, stump.NodeState()).update(items)
         if peer in self.auth:
             self._feed_auth(peer, content)
+
+    DECLINE_EVERY_S = 3600
+
+    def _decline_commands(self, peer, asked):
+        """Sideband and MeshChat can ask another app for its location, telemetry, a ping or
+        a signal report (LXMF FIELD_COMMANDS). FireFly shares none of that: it says so, once
+        an hour per contact, in a line any LXMF app shows. Never to a Stump."""
+        if peer in self.stumps or peer in self._blocked:
+            return
+        now = time.time()
+        last = self._declined.get(peer, 0)
+        if now - last < self.DECLINE_EVERY_S:
+            return
+        self._declined[peer] = now
+        what = " or ".join(sorted({COMMAND_NAMES.get(c, "commands") for c in asked}))
+        self.log(f"{peer[:8]} asked for {what}: declining")
+        self.send(peer, f"FireFly (handheld) doesn't share location, telemetry or signal reports, so your "
+                        f"request for {what} was declined. Text and voice notes work as usual.")
 
     def _save_voice(self, field, name):
         """Keep a received voice note on disk; the message row points at it."""
@@ -642,15 +686,49 @@ class Core:
         except Exception:
             return None
 
-    def add_contact(self, hex_addr):
-        hex_addr = hex_addr.strip().lower().replace("<", "").replace(">", "").replace(":", "")
-        if len(hex_addr) != 32 or any(c not in "0123456789abcdef" for c in hex_addr):
-            raise ValueError("an LXMF address is 32 hex characters")
-        if hex_addr in self._blocked:
+    def add_contact(self, text):
+        """An address typed or pasted, bare or as a link (addresses.py). -> (hex, how): how is
+        "key" (its key checked and handed to Reticulum: writable now), "stump" or "plain"."""
+        from . import addresses
+        if addresses.is_paper_message(text):
+            raise ValueError("that's a paper message (lxm://), not an address")
+        a = addresses.parse(text)
+        if a is None:
+            raise ValueError("an LXMF address is 32 hex characters (or an lxma:// / lxmf:// link)")
+        h = a["address"]
+        if a["key_bad"]:
+            raise ValueError("not trusted: the link's key isn't a Reticulum key")
+        ident = None
+        if a["key"] is not None:
+            ident = addresses.identity_for(h, a["key"])
+            if ident is None:
+                raise ValueError("not trusted: the link's key doesn't match its address")
+        if h == self.address:
+            raise ValueError("that's your own address")
+        if h in self._blocked:
             raise ValueError("that address is blocked: unblock it in SETUP first")
-        self.store.upsert_peer(hex_addr, "lxmf", heard=False, saved=1)
-        self.request_path(hex_addr)
-        return hex_addr
+        self.store.upsert_peer(h, "lxmf", heard=False, saved=1)
+        how = "plain"
+        if ident is not None:
+            if RNS.Identity.recall(bytes.fromhex(h)) is None:
+                RNS.Identity.remember(None, bytes.fromhex(h), ident.get_public_key(), None)
+            how = "key"
+        if a["stump"] is not None:
+            self._on_stump_beacon(h, a["stump"] or "Stump", "from its QR code")
+            how = "stump"
+        self.request_path(h)
+        return h, how
+
+    def address_codes(self, peer_hex):
+        """QR codes for an address (ours or a contact's): with the key when we know it."""
+        from . import addresses
+        if peer_hex == self.address:
+            key, name = self.identity.get_public_key(), None
+        else:
+            ident = RNS.Identity.recall(bytes.fromhex(peer_hex))
+            key = ident.get_public_key() if ident is not None else None
+            name = self.stumps.get(peer_hex, (None,))[0]
+        return addresses.codes(peer_hex, key, name)
 
     # ================================================================ deleting and blocking
     # Both are local: nothing is sent, and the other side isn't told.

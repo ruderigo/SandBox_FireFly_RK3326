@@ -14,7 +14,7 @@ re-implementation, so compatibility comes from the reference code itself.
 
 ![FireFly screens: chats, a conversation, a Stump node, the keyboard, network and setup](docs/screenshots.png)
 
-**Status:** v0.9.2 (sandbox: beta testing against [SandBox_Stump_On](https://github.com/ruderigo/SandBox_Stump_On); stable FireFly is [FireFly_RK3326_R36MAX_R36S](https://github.com/ruderigo/FireFly_RK3326_R36MAX_R36S)). Runs on RK3326 handhelds with the dArkOS image of
+**Status:** v0.9.3 (sandbox: beta testing against [SandBox_Stump_On](https://github.com/ruderigo/SandBox_Stump_On); stable FireFly is [FireFly_RK3326_R36MAX_R36S](https://github.com/ruderigo/FireFly_RK3326_R36MAX_R36S)). Runs on RK3326 handhelds with the dArkOS image of
 [arkos4clone](https://github.com/lcdyk0517/arkos4clone); tested on an R36MAX.
 See [Supported devices](#supported-devices).
 
@@ -195,6 +195,22 @@ Ports entry.
   quick replies, and any USB keyboard on the hub works at the same time.
 - **Headless mode** for testing over SSH: `python -m firefly --headless`.
 
+## Working with other LXMF apps
+
+FireFly runs the official Reticulum and LXMF libraries, so messaging with
+Sideband, NomadNet, MeshChat, Columba, FireFly for Android and Stumps is the
+same protocol. Where apps differ, and what FireFly does:
+
+| Layer | What differs between apps | FireFly on the handheld |
+| --- | --- | --- |
+| Addresses | Sideband, NomadNet: the bare 32-hex address. Columba, MeshChatX, T-Deck LXMF: `lxma://<address>:<key>`. Stumps and FireFly: `lxmf://<address>?key=…` (`stump=` for a Stump). MeshChat: none, it learns from announces | *Show QR code* switches between all three (←→). *Add contact* takes any of them; a link's key is checked against its address and handed to Reticulum, so you can write at once |
+| Messages | Same everywhere: text, single packet / link / propagation node, stamps, signatures | Same. Sideband's stamp tickets aren't used: FireFly makes the stamp |
+| Content | Voice; images and files; Sideband's location and telemetry; avatar icons | Voice plays (Opus, Codec 2). Images, files, telemetry: a line saying what was sent. Icons: ignored |
+| Formatting | NomadNet sends Markdown, Sideband reads it; Micron on NomadNet | Markdown, Micron and BBCode rendered with real styles: bold, italic, underline, strikethrough, inline code, headings, lists, quotes, code blocks; links as underlined text (url) |
+| Requests | Sideband and MeshChat ask for location, telemetry, pings, signal reports | Declined politely, once an hour per contact; shown as a short note, never an empty message |
+| Pages | NomadNet nodes serve Micron pages (NomadNet, MeshChat browse them) | Not browsable: nodes heard are listed |
+| Paper messages | Sideband's `lxm://` QR codes | Not read (no camera) |
+
 ## Stump foundations
 
 A Stump node is an ordinary LXMF peer, so chatting with one already works.
@@ -281,6 +297,7 @@ From the `firefly/` folder:
     python3 tests/run_propagation.py   # offline peer: fallback to a propagation node
     python3 tests/run_radio.py         # radio manager against simulated RNodes (no hardware needed)
     STUMP_DIR=~/Stump python3 tests/run_real_stump.py   # against a real computer Stump (see the file); skipped without STUMP_DIR
+    python3 tests/run_interop.py       # other LXMF apps: address codes, commands, Markdown/Micron
     python3 tests/run_stumpweb.py      # chat with a Stump over Wi-Fi, against a fake of its web API
     python3 tests/run_lan.py           # the handheld's network, read-only and followed live; STUMP? answers
     python3 tests/run_stump_protocol.py # Stump 1.0.0-beta.34 lines: #lora-mesh, nick@stump, ⧗, [LoRa]
