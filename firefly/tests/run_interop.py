@@ -71,6 +71,32 @@ check(how == "stump" and core.is_stump(S2), "a Stump's code adds a Stump")
 check(core.add_contact(RNS.Destination.hash(RNS.Identity(), "lxmf", "delivery").hex())[1] == "plain", "a bare address, as before")
 check([c[0] for c in core.address_codes(core.address)] == ["FireFly", "Columba", "Address"], "our own QR codes carry our key")
 
+print("saying FireFly is a Stump app (Stump 1.0.0-beta.53)")
+import RNS.vendor.umsgpack as _mp
+from firefly.core import APP_TAG
+data = core.router.get_announce_app_data(core.local.hash)
+items = _mp.unpackb(data)
+check(len(items) == 4 and items[3] == APP_TAG and APP_TAG.startswith("stump:firefly-rk3326/"), f"fourth item: {items[3]!r}")
+check(LXMF.display_name_from_app_data(data) == core.settings["display_name"], "upstream LXMF still reads the name")
+def stump_app_tag_in(app_data):          # the Stump's own check (rrc.app_tag_in, beta.53 packs branch)
+    b0 = app_data[0]
+    if not ((0x90 <= b0 <= 0x9f) or b0 == 0xdc):
+        return False
+    d = _mp.unpackb(app_data)
+    t = d[3] if isinstance(d, list) and len(d) > 3 else None
+    t = t.decode("utf-8", "ignore") if isinstance(t, bytes) else t
+    return isinstance(t, str) and t.startswith("stump")
+check(stump_app_tag_in(data), "a Stump's own check recognises FireFly from the announce alone")
+check(LXMF.stamp_cost_from_app_data(data) is None, "...and the stamp cost (none asked)")
+seen = []
+class H:
+    aspect_filter = "lxmf.delivery"
+    def received_announce(self, destination_hash, announced_identity, app_data):
+        seen.append(app_data)
+RNS.Transport.register_announce_handler(H())
+core.announce(); time.sleep(0.5)
+check(core.router.get_announce_app_data(core.local.hash) == data, "the same app data on every announce")
+
 print("commands from Sideband and MeshChat")
 check(commands_asked([{0x01: [0, False]}]) == [1] and commands_asked("junk") == [] and commands_asked([{True: 1}]) == [],
       "FIELD_COMMANDS read safely")

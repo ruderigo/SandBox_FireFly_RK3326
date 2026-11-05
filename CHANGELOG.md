@@ -27,6 +27,12 @@ teams' work (Stump beta.52-53, FireFly for Android 0.6.0-beta).
   dividers, and links underlined with their address in brackets. Italics use
   DejaVu's oblique faces when installed (fonts-dejavu-extra), else pygame
   slants the regular face, so they always show.
+- **FireFly says it's a Stump app** in every LXMF announce (asked by the
+  Stump team, 1.0.0-beta.53): a fourth app-data item,
+  `stump:firefly-rk3326/<version>`. Stumps running packs that reword their
+  messages for plain LXMF apps then never reword them for FireFly, from the
+  first message and over LoRa too. Sideband, NomadNet, MeshChat and Columba
+  read only the first three items: name and stamp cost unchanged.
 - README: *Working with other LXMF apps*, layer by layer.
 - Tests: `run_interop.py` (new, in CI): every code format both ways, forged
   keys, the lxma:// QR decoded back with zbarimg, contacts writable at once,
