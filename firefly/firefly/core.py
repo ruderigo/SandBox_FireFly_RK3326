@@ -34,6 +34,9 @@ FIELD_NAMES = {
 }
 
 
+from . import __version__ as _VERSION
+APP_TAG = f"stump:firefly-rk3326/{_VERSION}"     # the announce's fourth item (Stump 1.0.0-beta.53)
+
 # Sideband's commands (sideband/sense.py, Commands), also sent by MeshChat. FireFly answers none.
 COMMAND_NAMES = {0x00: "a plugin command", 0x01: "location and telemetry", 0x02: "a ping",
                  0x03: "an echo", 0x04: "a signal report"}
@@ -116,6 +119,7 @@ class Core:
         self.router = LXMRouter(identity=self.identity, storagepath=self.paths.lxmf_storage)
         self.local = self.router.register_delivery_identity(self.identity, display_name=s["display_name"])
         self.router.register_delivery_callback(self._on_message)
+        self._tag_announces()
         self._blocked = {b["hash"] for b in self.store.blocked()}
         for h in self._blocked:                     # LXMF's ignore list lives in memory only
             self.router.ignore_destination(bytes.fromhex(h))
@@ -231,6 +235,24 @@ class Core:
         if time.time() - self.last_announce > 15:
             self.announce()
         self.request_sync()
+
+    def _tag_announces(self):
+        """Say "I'm a Stump app" in every LXMF announce (Stump 1.0.0-beta.53, CLIENT_QUICKSTART
+        "Saying you're a Stump app"): a fourth app-data item, "stump:firefly-rk3326/<version>".
+        Stumps then never reword their lines for FireFly, from the first message, over LoRa too.
+        Upstream LXMF (Sideband, NomadNet, MeshChat, Columba) reads only the first three."""
+        orig = self.router.get_announce_app_data
+
+        def app_data(destination_hash):
+            data = orig(destination_hash)
+            try:
+                items = msgpack.unpackb(data) if data else None
+                if isinstance(items, list) and len(items) == 3:
+                    return msgpack.packb(items + [APP_TAG])
+            except Exception:
+                pass
+            return data
+        self.router.get_announce_app_data = app_data
 
     def announce(self):
         self.local.display_name = self.settings["display_name"]

@@ -207,6 +207,7 @@ same protocol. Where apps differ, and what FireFly does:
 | Messages | Same everywhere: text, single packet / link / propagation node, stamps, signatures | Same. Sideband's stamp tickets aren't used: FireFly makes the stamp |
 | Content | Voice; images and files; Sideband's location and telemetry; avatar icons | Voice plays (Opus, Codec 2). Images, files, telemetry: a line saying what was sent. Icons: ignored |
 | Formatting | NomadNet sends Markdown, Sideband reads it; Micron on NomadNet | Markdown, Micron and BBCode rendered with real styles: bold, italic, underline, strikethrough, inline code, headings, lists, quotes, code blocks; links as underlined text (url) |
+| Announces | Name, stamp cost, features; Stump apps add a fourth item, `stump:<app>/<version>` | Sends `stump:firefly-rk3326/<version>`, so Stumps never reword their lines for it |
 | Requests | Sideband and MeshChat ask for location, telemetry, pings, signal reports | Declined politely, once an hour per contact; shown as a short note, never an empty message |
 | Pages | NomadNet nodes serve Micron pages (NomadNet, MeshChat browse them) | Not browsable: nodes heard are listed |
 | Paper messages | Sideband's `lxm://` QR codes | Not read (no camera) |
