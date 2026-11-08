@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.4 (sandbox)
+Build 60 (Stump 1.0.0-beta.60). Re-tested against a real Stump of that
+build (`tests/run_real_stump.py`: the beacon, #lora-mesh, /rooms, /post and
+/board over LoRa; the LAN, chat and DMs with the web chat, /join and /auth
+over Wi-Fi: all pass).
+- **"No LoRa on mesh"** (Stump beta.57): a Stump with no radio, nor any
+  along its chain, keeps #lora-mesh closed to the chat. Its refusal
+  (`⊘ #lora-mesh no-lora`) now reads "⊘ #lora-mesh: no LoRa radio on this
+  Stump or its chain" with the Stump's own sentence, not "is no-lora";
+  FireFly stays in #main. Checked against a real Stump without a Heltec
+  (`tests/run_real_stump_nolora.py`, `STUMP_DIR_NO_LORA`).
+- **Tagged names** (Stump beta.60: "LaBuche-k7q2", not "LaBuche1"): read
+  as any nick, renames included (tests).
+- #lora-mesh's answers now reach FireFly on a Stump without a Heltec
+  (Stump beta.57's fix, nothing to change here).
+
 ## 0.9.3 (sandbox)
 Build 53 (Stump 1.0.0-beta.53). Working with other LXMF apps, after reading
 Sideband, NomadNet, MeshChat and LXMF's code, and the Stump and Android

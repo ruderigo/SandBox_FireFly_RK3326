@@ -25,6 +25,13 @@ check(P("→ #lxmf")["room"] == "lora-mesh", "the old name #lxmf is read as #lor
 check(P("= #lora-mesh — vous êtes déjà dans #lora-mesh")["room"] == "lora-mesh", "already in #lora-mesh")
 r = P("⊘ #lora-mesh LoRa — salon réservé à la radio")
 check(r["kind"] == "refused" and r["room"] == "lora-mesh" and r["tier"] == "LoRa", "refused by the new [LoRa] tier")
+r = P("⊘ #lora-mesh no-lora — No LoRa on mesh: no Stump of this chain has a radio")
+check(r["kind"] == "refused" and r["room"] == "lora-mesh" and r["tier"] == "no-lora",
+      "'No LoRa on mesh' (beta.57): #lora-mesh refused, tier no-lora")
+r = P("✎ R36-Tester → R36-Tester-k7q2")
+check(r == {"kind": "rename", "old": "R36-Tester", "new": "R36-Tester-k7q2"}, "a taken nick gets a tag (beta.60)")
+r = P("<LaBuche-k7q2> salut")
+check(r == {"kind": "msg", "nick": "LaBuche-k7q2", "text": "salut"}, "a tagged Stump name speaks")
 r = P("#lora-mesh ·3 [LoRa] radio room")
 check(r["kind"] == "room" and r["tier"] == "LoRa" and r["topic"] == "radio room", "/rooms line with a [LoRa] tag")
 r = P("#vip ·1 [minted] invite only")
