@@ -444,7 +444,10 @@ def _stump_render(p, f, width):
     if k == "refused":
         hint = {"minted": "  (Y → verify my identity)", "hybrid": "  (Y → verify my identity)",
                 "LoRa": "  (for people on LoRa and those invited)"}.get(p["tier"], "")
-        return ([(ln, T.ERROR) for ln in D.wrap(f.body, f"⊘ #{p['room']} is {p['tier']}{hint}", width)] +
+        # Stump 1.0.0-beta.57: #lora-mesh is closed with no radio on the Stump nor along its chain.
+        head = (f"⊘ #{p['room']}: no LoRa radio on this Stump or its chain" if p["tier"] == "no-lora"
+                else f"⊘ #{p['room']} is {p['tier']}{hint}")
+        return ([(ln, T.ERROR) for ln in D.wrap(f.body, head, width)] +
                 [(ln, T.DIM) for ln in D.wrap(f.body, p["text"], width)])
     if k in ("already_in", "unknown_command"):
         head = f"= already in #{p['room']}" if k == "already_in" else f"? unknown command {p['command']}"
