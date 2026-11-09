@@ -22,6 +22,13 @@ MODEL=$( { tr -d '\0' < /proc/device-tree/model; } 2>/dev/null || echo unknown)
 FB=$(cat /sys/class/graphics/fb0/virtual_size 2>/dev/null | tr , x)
 echo "   device: $MODEL   screen: ${FB:-unknown}   $(. /etc/os-release 2>/dev/null; echo "$PRETTY_NAME")   Python $(python3 -V 2>&1 | cut -d" " -f2)"
 
+# sudo: over SSH it asks in the terminal. From the RK3326 Provisioner (no terminal)
+# the password typed on its screen comes through sudo's askpass helper: asked once
+# here, then sudo's ticket does the rest. Never piped into sudo -S.
+if [ "$(id -u)" -ne 0 ] && [ -n "${SUDO_ASKPASS:-}" ] && [ ! -t 0 ] && ! sudo -n true 2>/dev/null; then
+  sudo -A -v || { echo "ERROR: sudo didn't take that password: nothing was changed."; exit 1; }
+fi
+
 echo "== 0/5 Upgrade from RetiCom (FireFly's former name), if present"
 OLD_APP="$HOME/reticom"; OLD_DATA="$HOME/.reticom"; NEW_DATA="$HOME/.firefly"
 if pgrep -f "python.* -m reticom" >/dev/null; then

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.6 (sandbox)
+Build 62.
+- **Installed from the RK3326 Provisioner, sudo's password typed on its
+  screen.** `deploy/install.sh` uses sudo (packages, the serial port, the
+  Ports entry); from the Provisioner there's no terminal for sudo to ask
+  in. Given sudo's askpass helper (the Provisioner 0.3.0-beta.16 does that),
+  it asks sudo once with it (`sudo -A -v`) and sudo's ticket does the rest;
+  a wrong password stops it before anything changes. Over SSH nothing
+  changes: sudo asks in the terminal as before.
+
 ## 0.9.5 (sandbox)
 Build 62 (Stump 1.0.0-beta.62). Re-tested against real Stumps of that build:
 `tests/run_real_stump.py` (LoRa and Wi-Fi, all pass) and
