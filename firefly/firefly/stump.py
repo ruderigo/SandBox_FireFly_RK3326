@@ -82,6 +82,7 @@ def beacon_hash_for(identity):
 _DM = re.compile(r"^\[DM\] <([^>]+)>: (.*)$", re.S)
 _ROOM_MSG = re.compile(r"^<([^>]+)> (.*)$", re.S)
 _ROOM_LIST = re.compile(r"^#(\S+) ·(\d+)\s*(\[([A-Za-z][\w-]*)\])?\s*(.*)$")
+_ROOM_SCOPE = re.compile(r"\s*\[(Wi-Fi|LoRa ⚠|LoRa)\]\s*$")
 
 # Stump 1.0.0-beta.4 renamed #lxmf to #lora-mesh; older nodes still say lxmf.
 ROOM_ALIASES = {"lxmf": "lora-mesh"}
@@ -186,8 +187,16 @@ def parse_line(line):
         return {"kind": "action", "nick": nick, "text": text}
     m = _ROOM_LIST.match(line)
     if m:
+        # Stump 1.0.0-beta.62: where a room goes, at the end of its line ([Wi-Fi], [LoRa ⚠];
+        # [LoRa] on #lora-mesh when it's locked to the radio).
+        topic, scope, tier = m.group(5), "local", m.group(4) or "open"
+        if not topic and tier in ("Wi-Fi", "LoRa"):        # no topic: its scope comes right after the count
+            topic, tier = "[%s]" % tier, "open"
+        sm = _ROOM_SCOPE.search(topic)
+        if sm:
+            topic, scope = topic[:sm.start()], "wifi" if sm.group(1) == "Wi-Fi" else "lora"
         return {"kind": "room", "room": room_name(m.group(1)), "count": int(m.group(2)),
-                "tier": m.group(4) or "open", "topic": m.group(5)}
+                "tier": tier, "topic": topic, "scope": scope}
     if line.startswith("#") and ": " in line:
         room, _, names = line.partition(": ")
         return {"kind": "names", "room": room_name(room), "names": [n.strip() for n in names.split(",") if n.strip()]}

@@ -25,6 +25,13 @@ check(P("→ #lxmf")["room"] == "lora-mesh", "the old name #lxmf is read as #lor
 check(P("= #lora-mesh — vous êtes déjà dans #lora-mesh")["room"] == "lora-mesh", "already in #lora-mesh")
 r = P("⊘ #lora-mesh LoRa — salon réservé à la radio")
 check(r["kind"] == "refused" and r["room"] == "lora-mesh" and r["tier"] == "LoRa", "refused by the new [LoRa] tier")
+r = P("#bavard ·2 the play goes on  [LoRa ⚠]")
+check(r["kind"] == "room" and r["room"] == "bavard" and r["scope"] == "lora" and r["topic"] == "the play goes on",
+      "a LoRa room's scope (beta.62), out of its topic")
+r = P("#quiz ·0  [Wi-Fi]")
+check(r["scope"] == "wifi" and r["topic"] == "" and r["tier"] == "open", "a Wi-Fi room with no topic")
+r = P("#main ·5 the main room")
+check(r["scope"] == "local" and r["topic"] == "the main room", "a room on its own Stump")
 r = P("⊘ #lora-mesh no-lora — No LoRa on mesh: no Stump of this chain has a radio")
 check(r["kind"] == "refused" and r["room"] == "lora-mesh" and r["tier"] == "no-lora",
       "'No LoRa on mesh' (beta.57): #lora-mesh refused, tier no-lora")

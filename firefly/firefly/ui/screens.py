@@ -530,7 +530,7 @@ def _stump_text(p):
             "moved": lambda: f"→ you are in #{p['room']}", "no_such_nick": lambda: f"⊖ no one called {p['nick']}",
             "names": lambda: f"#{p['room']}: {', '.join(p['names'])}",
             "room": lambda: f"#{p['room']} ·{p['count']} {'[' + p['tier'] + '] ' if p['tier'] != 'open' else ''}"
-                            f"{p['topic']}"}[k]()
+                            f"{p['topic']}" + {"wifi": "  [Wi-Fi]", "lora": "  [LoRa ⚠]"}.get(p.get("scope"), "")}[k]()
 
 
 class PeerActions:
