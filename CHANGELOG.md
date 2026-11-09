@@ -6,7 +6,7 @@ Build 62.
   screen.** `deploy/install.sh` uses sudo (packages, the serial port, the
   Ports entry); from the Provisioner there's no terminal for sudo to ask
   in. Given sudo's askpass helper (the Provisioner 0.3.0-beta.16 does that),
-  it asks sudo once with it (`sudo -A -v`) and sudo's ticket does the rest;
+  every sudo in it goes through the helper (`sudo -A`), so a long package install outliving sudo's ticket still gets the password;
   a wrong password stops it before anything changes. Over SSH nothing
   changes: sudo asks in the terminal as before.
 
