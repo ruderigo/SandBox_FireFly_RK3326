@@ -8,6 +8,9 @@ but with "the heltec": "None":
 Then:
     STUMP_DIR_NO_LORA=/path/to/StumpNoLora python3 tests/run_real_stump_nolora.py
 
+From Stump 1.0.0-beta.62 it also makes a Wi-Fi room with /create (the Stump's
+/admin password: STUMP_ADMIN_PASSWORD, default test-pass-1) and reads /rooms.
+
 Skipped (exit 0) when STUMP_DIR_NO_LORA isn't set.
 """
 import os, subprocess, sys, tempfile, time
@@ -73,6 +76,16 @@ try:
     ref = next((it for it in lines() if it["kind"] == "refused"), None)
     if ref:
         print(f"     the Stump said: {ref['text']}", flush=True)
+    # Stump 1.0.0-beta.62: a room with a scope (its /admin password), then /rooms says where it goes.
+    pw = os.environ.get("STUMP_ADMIN_PASSWORD", "test-pass-1")
+    core.send(node_hex, "/create %s #quiz -wifi" % pw)
+    time.sleep(3)
+    core.send(node_hex, "/rooms")
+    check(wait(lambda: any(it["kind"] == "room" and it["room"] == "quiz" and it["scope"] == "wifi" for it in lines()), 30),
+          "/create ... #quiz -wifi, then /rooms: #quiz read as a Wi-Fi room (beta.62)")
+    for it in lines():
+        if it["kind"] == "room":
+            print(f"     #{it['room']} ·{it['count']} scope={it['scope']} topic={it['topic']!r}", flush=True)
     mid = core.send(node_hex, "hello in main")
     check(wait(lambda: core.store.message(mid)["state"] == "delivered" and core.store.message(mid)["method"] == "wifi", 20),
           "a line in #main over Wi-Fi: delivered")

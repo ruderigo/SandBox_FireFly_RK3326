@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.5 (sandbox)
+Build 62 (Stump 1.0.0-beta.62). Re-tested against real Stumps of that build:
+`tests/run_real_stump.py` (LoRa and Wi-Fi, all pass) and
+`tests/run_real_stump_nolora.py` (a Stump with no radio).
+- **Rooms with a scope** (Stump beta.62: `/create`, `/setchan`, `/chanreq`;
+  a room can go as far as Wi-Fi or LoRa go along a chain): `/rooms` ends
+  such a room's line with `[Wi-Fi]` or `[LoRa ⚠]`. FireFly reads it as the
+  room's scope (local, wifi, lora), apart from its topic, and shows it
+  after it, as the Stump does. Checked against a real Stump: a Wi-Fi room
+  made with `/create` read back from `/rooms`.
+- Plugin bots carry their Stump's tag (Bavard-k7q2): read as any name.
+
 ## 0.9.4 (sandbox)
 Build 60 (Stump 1.0.0-beta.60). Re-tested against a real Stump of that
 build (`tests/run_real_stump.py`: the beacon, #lora-mesh, /rooms, /post and
