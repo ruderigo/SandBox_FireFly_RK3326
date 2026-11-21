@@ -232,7 +232,11 @@ class RecordScreen(Screen):
         y += f.mono_big.get_linesize() + 10
         D.text(surf, f.mono, f"Mic: {self.rec.mic}", (x, y), T.MUTED)
         y += f.line + 4
-        codec = "Opus (Wi-Fi quality, ~12 KB)" if self.mode == v.OPUS_OGG else "Codec 2 1200 (LoRa-sized, ~2 KB)"
+        if self.mode == v.OPUS_OGG:
+            secs_for = max(self.rec.seconds, 1.0) if self.state != "ready" else v.REC_MAX_S
+            codec = f"Opus, {v.opus_kbps(secs_for, self._limit())} kbit/s (clear speech)"
+        else:
+            codec = "Codec 2 1200 (the smallest: robotic, for slow LoRa)"
         D.text(surf, f.mono, f"Codec: {codec}", (x, y), T.MUTED)
         y += f.line + 16
         secs = self.rec.seconds
@@ -1330,8 +1334,8 @@ class SettingsTab(ListScreen):
             ("voicesdnow", "Copy all now", ""),
             ("audioout", "Plays on", _audio_out()),
             ("audioin", "Records from", _audio_in()),
-            ("voicesend", "Send as", {"auto": "auto (Opus on Wi-Fi, else Codec 2)", "opus": "Opus",
-                                      "codec2": "Codec 2 1200"}.get(s.get("voice_send", "auto"), "auto")),
+            ("voicesend", "Send as", {"auto": "Opus, best that fits", "opus": "Opus, best that fits",
+                                      "codec2": "Codec 2 1200 (smallest)"}.get(s.get("voice_send", "auto"), "auto")),
             ("head", "SCREEN", None),
             ("rotation", "Screen rotation", _rot_label(s.get("screen_rotation", "auto"), self.app.display.rotation)),
             ("head", "", None),
@@ -1398,7 +1402,7 @@ class SettingsTab(ListScreen):
         elif key == "pmode":
             s["propagation_mode"] = _step(["auto", "manual", "off"], s["propagation_mode"], d); self._net()
         elif key == "voicesend":
-            s["voice_send"] = _step(["auto", "opus", "codec2"], s.get("voice_send", "auto"), d); s.save()
+            s["voice_send"] = _step(["auto", "codec2"], s.get("voice_send", "auto") if s.get("voice_send") != "opus" else "auto", d); s.save()
         elif key == "rotation":
             self.app.set_rotation(_step(["auto", 0, 90, 180, 270], s.get("screen_rotation", "auto"), d))
 
@@ -1479,7 +1483,7 @@ class SettingsTab(ListScreen):
             items += [(f"Remove {t}", (lambda t=t: self._remove_tcp(t))) for t in s["tcp_peers"]]
             app.push(Menu(app, "TCP peers", items))
         elif key == "voicesend":
-            s["voice_send"] = _step(["auto", "opus", "codec2"], s.get("voice_send", "auto"), 1); s.save()
+            s["voice_send"] = _step(["auto", "codec2"], s.get("voice_send", "auto") if s.get("voice_send") != "opus" else "auto", 1); s.save()
         elif key == "pmode":
             nodes = core.store.peers("propagation")
             items = [("Auto (nearest heard)", lambda: self._set_pn("auto", None)),

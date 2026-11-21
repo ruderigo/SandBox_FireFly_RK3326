@@ -524,18 +524,13 @@ class Core:
         return msg_id
 
     def voice_mode_for(self, peer_hex):
-        """The codec a voice note to this address goes in: Opus over a Stump's
-        Wi-Fi (or when SETUP says Opus), else Codec 2 1200, LoRa-sized."""
+        """The codec a voice note goes in: Opus, at the best quality its size
+        limit allows (voice.opus_kbps), unless SETUP asks for Codec 2, the
+        smallest (slow LoRa, a robotic voice)."""
         from . import voice
-        want = self.settings.get("voice_send", "auto")
-        if want == "opus":
-            return voice.OPUS_OGG
-        if want == "codec2":
+        if self.settings.get("voice_send", "auto") == "codec2":
             return voice.SEND_CODEC2
-        web = self.web.get(peer_hex)
-        if web is not None and web.online and self.settings.get("stump_wifi", True):
-            return voice.OPUS_OGG
-        return voice.SEND_CODEC2
+        return voice.OPUS_OGG
 
     def send_voice(self, peer_hex, mode, data, to=None):
         """Send a recorded voice note (the LXMF audio field, as Sideband does).
