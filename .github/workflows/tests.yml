@@ -59,6 +59,10 @@ jobs:
         timeout-minutes: 3
         run: python tests/run_voice_record.py
 
+      - name: A sender's clock that's plainly wrong
+        timeout-minutes: 1
+        run: python tests/run_times.py
+
       - name: Radio manager against simulated RNodes
         timeout-minutes: 3
         run: python tests/run_radio.py

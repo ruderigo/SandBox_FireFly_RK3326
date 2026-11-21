@@ -420,8 +420,18 @@ REC_RATE = 16000                  # recorded at 16 kHz mono; Codec 2 takes it ha
 REC_MAX_S = 15.0                  # the voice-note spec's (and a Stump's) longest note
 REC_MIN_S = 0.6                   # a Stump refuses shorter ones
 STUMP_MAX_BYTES = 16384           # a Stump takes notes up to 16 KB
-SEND_CODEC2 = LXMF.AM_CODEC2_1200 # LoRa-sized: 15 s in ~2.3 KB, as Sideband sends over LoRa
-OPUS_KBPS = 6                     # 15 s of speech in ~12 KB: under a Stump's 16 KB
+SEND_CODEC2 = LXMF.AM_CODEC2_1200 # the smallest: 15 s in ~2.3 KB, for slow LoRa (a robotic voice)
+OPUS_BEST_KBPS = 24               # clear speech; less only when the note wouldn't fit
+OPUS_MIN_KBPS = 6
+
+
+def opus_kbps(seconds, max_bytes):
+    """The best Opus rate for a note this long that fits max_bytes (with room
+    for Ogg's pages): 24 kbit/s when it fits, less only when it must."""
+    if seconds <= 0:
+        return OPUS_BEST_KBPS
+    fits = int(max_bytes * 8 * 0.95 / seconds / 1000)
+    return max(OPUS_MIN_KBPS, min(OPUS_BEST_KBPS, fits))
 
 
 def encoders_available():
@@ -530,9 +540,15 @@ def encode(pcm16k, mode, max_bytes=MAX_AUDIO_BYTES):
             raw, out = os.path.join(tmp, "in.raw"), os.path.join(tmp, "out.ogg")
             with open(raw, "wb") as f:
                 f.write(bytes(pcm16k))
-            for kbps in (OPUS_KBPS, 5, 4):
+            first = opus_kbps(len(pcm16k) / 2.0 / REC_RATE, max_bytes)
+            ladder = [first] + list(range(min(first - 1, 16), OPUS_MIN_KBPS - 1, -1)) + [5, 4]
+            for kbps in ladder:                        # one step down at a time: the best rate that fits
+                # Size-limited: constant rate, so the note uses all the room it has
+                # (variable rate spends less than asked on a long note).
+                rate_mode = [] if kbps >= OPUS_BEST_KBPS else ["--hard-cbr"]
                 p = subprocess.run(["opusenc", "--quiet", "--raw", "--raw-rate", str(REC_RATE), "--raw-chan", "1",
-                                    "--raw-bits", "16", "--bitrate", str(kbps), "--framesize", "60", raw, out],
+                                    "--raw-bits", "16", "--bitrate", str(kbps), "--framesize", "60"] + rate_mode
+                                   + [raw, out],
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
                 if p.returncode or not os.path.isfile(out) or os.path.getsize(out) <= max_bytes:
                     break

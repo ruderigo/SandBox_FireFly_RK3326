@@ -106,6 +106,28 @@ def single_packet_size(text, title=""):
     return len(payload) - LXMessage.TIMESTAMP_SIZE - LXMessage.STRUCT_OVERHEAD
 
 
+EPOCH_2000 = 946684800              # a MicroPython board's clock counts from 2000, not 1970
+EARLIEST = 1704067200               # 2024-01-01: nothing FireFly receives was sent before
+
+
+def sane_time(ts, arrived):
+    """When a message was sent, from its sender's clock, unless that clock is
+    plainly wrong (as the Android FireFly guards it): exactly 30 years early
+    (a board that left out its 2000-epoch offset) is corrected; anything else
+    before 2024, or more than a day ahead, becomes when it arrived (a
+    handheld with no battery clock that started without the internet).
+    A message held for days by a propagation node keeps its real time."""
+    try:
+        ts = float(ts)
+    except (TypeError, ValueError):
+        return arrived
+    if abs(ts + EPOCH_2000 - arrived) < 86400 and ts < EARLIEST:
+        return ts + EPOCH_2000
+    if ts < EARLIEST or ts > arrived + 86400:
+        return arrived
+    return ts
+
+
 class Core:
     def __init__(self, paths, log=print):
         self.paths = paths
@@ -524,18 +546,13 @@ class Core:
         return msg_id
 
     def voice_mode_for(self, peer_hex):
-        """The codec a voice note to this address goes in: Opus over a Stump's
-        Wi-Fi (or when SETUP says Opus), else Codec 2 1200, LoRa-sized."""
+        """The codec a voice note goes in: Opus, at the best quality its size
+        limit allows (voice.opus_kbps), unless SETUP asks for Codec 2, the
+        smallest (slow LoRa, a robotic voice)."""
         from . import voice
-        want = self.settings.get("voice_send", "auto")
-        if want == "opus":
-            return voice.OPUS_OGG
-        if want == "codec2":
+        if self.settings.get("voice_send", "auto") == "codec2":
             return voice.SEND_CODEC2
-        web = self.web.get(peer_hex)
-        if web is not None and web.online and self.settings.get("stump_wifi", True):
-            return voice.OPUS_OGG
-        return voice.SEND_CODEC2
+        return voice.OPUS_OGG
 
     def send_voice(self, peer_hex, mode, data, to=None):
         """Send a recorded voice note (the LXMF audio field, as Sideband does).
@@ -748,7 +765,7 @@ class Core:
                            + ": declined (FireFly doesn't share it)")
         # A Stump's lines are filed by when they arrive: its clock may be unset (a CAM
         # has no battery clock) and its chat is never stored and forwarded.
-        ts = time.time() if peer in self.stumps else (lxm.timestamp or time.time())
+        ts = time.time() if peer in self.stumps else sane_time(lxm.timestamp, time.time())
         self.store.add_message(peer, False, content, "received", ts=ts,
                                title=lxm.title_as_string() if lxm.title else "",
                                method=_method_name(lxm.method), lxm_hash=lxm_hash,

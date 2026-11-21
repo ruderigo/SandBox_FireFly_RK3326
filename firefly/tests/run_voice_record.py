@@ -79,7 +79,13 @@ c.store.upsert_peer(stp, "lxmf", name="LaBuche", hops=1, stump="LaBuche", stump_
 c.stumps[stp] = ("LaBuche", "1.0.0-beta.87")
 lora = []
 c._send_worker = lambda msg_id, peer, text, method, title, fields=None: lora.append((peer, text, fields))
-check(c.voice_mode_for(bob) == voice.SEND_CODEC2, "to a person over LoRa: Codec 2, LoRa-sized")
+check(c.voice_mode_for(bob) == voice.OPUS_OGG, "to a person: Opus, clear speech")
+check(voice.opus_kbps(5, voice.STUMP_MAX_BYTES) == 24 and voice.opus_kbps(15, voice.MAX_AUDIO_BYTES) == 24,
+      "24 kbit/s whenever it fits")
+check(voice.opus_kbps(15, voice.STUMP_MAX_BYTES) == 8, "15 s through a Stump (16 KB): the best that fits, 8 kbit/s")
+op24 = voice.encode(r2.pcm, voice.OPUS_OGG, voice.MAX_AUDIO_BYTES)
+check(len(op24) > 30000 and len(op24) <= voice.MAX_AUDIO_BYTES, f"15 s to a person: {len(op24)} bytes, ~{len(op24)*8//15000} kbit/s")
+check(len(op) > 13500, f"15 s through a Stump uses the room it has ({len(op)} of 16384 bytes)")
 mid = c.send_voice(bob, voice.SEND_CODEC2, c2); time.sleep(0.3)
 check(lora and lora[-1][0] == bob and lora[-1][1] == "" and lora[-1][2] == {LXMF.FIELD_AUDIO: [voice.SEND_CODEC2, c2]},
       "to Bob: the LXMF audio field [mode, bytes], as Sideband sends")
@@ -104,7 +110,7 @@ class FakeWeb:
             raise Refused(self.answer)
         return [self.answer]
 c.web[stp] = FakeWeb("[DM] <r36max>: ♪ 15.0 s")
-check(c.voice_mode_for(stp) == voice.OPUS_OGG, "through a Stump on its Wi-Fi: Opus")
+check(c.voice_mode_for(stp) == voice.OPUS_OGG, "through a Stump: Opus")
 lora.clear(); mid = c.send_voice(stp, voice.OPUS_OGG, op, "zoe"); time.sleep(0.3)
 check(c.web[stp].got == [("zoe", voice.OPUS_OGG, len(op))] and not lora, "over its Wi-Fi: POST /rrc/voice to zoe")
 check([x for x in c.store.messages(stp) if x["id"] == mid][0]["state"] == "delivered", "... delivered")
@@ -121,13 +127,13 @@ c.settings["voice_send"] = "auto"
 import pygame
 from firefly.ui.app import App
 from firefly.ui.screens import ChatScreen, RecordScreen
-del c.web[stp]
+c.web.pop(stp, None)                         # (FireFly may have dropped it already)
 app = App(c, size=(640, 480))
 app.push(ChatScreen(app, bob)); app.current.handle("y")
 labels = [l for l, _ in app.current.items]
 check(labels[0] == "Record a voice note", "a person's chat menu: Record a voice note")
 app.current.items[0][1](); scr = app.current
-check(isinstance(scr, RecordScreen) and scr.mode == voice.SEND_CODEC2, "the recorder opens, Codec 2 for LoRa")
+check(isinstance(scr, RecordScreen) and scr.mode == voice.OPUS_OGG, "the recorder opens on Opus")
 os.environ["FAKE_PACE"] = "0.005"
 scr.handle("a"); app.render()
 check(scr.state == "recording" and ("A", "stop") in scr.hints, "A records")
@@ -140,12 +146,12 @@ app.render()
 check(scr.state == "recorded" and scr.data and ("X", "listen") in scr.hints, "A stops; it's encoded, ready to listen or send")
 scr.handle("y")
 for _ in range(100):
-    if scr.state == "recorded" and scr.mode == voice.OPUS_OGG:
+    if scr.state == "recorded" and scr.mode == voice.SEND_CODEC2:
         break
     time.sleep(0.05)
-check(scr.mode == voice.OPUS_OGG and scr.data[:4] == b"OggS", "Y switches to Opus (encoded again)")
+check(scr.mode == voice.SEND_CODEC2 and scr.data[:4] != b"OggS", "Y switches to Codec 2, the smallest (encoded again)")
 lora.clear(); scr.handle("a"); time.sleep(0.3)
-check(lora and lora[-1][2][LXMF.FIELD_AUDIO][0] == voice.OPUS_OGG and not isinstance(app.current, RecordScreen),
+check(lora and lora[-1][2][LXMF.FIELD_AUDIO][0] == voice.SEND_CODEC2 and not isinstance(app.current, RecordScreen),
       "A sends it, and the recorder closes")
 app.stack.clear(); chat = ChatScreen(app, stp); app.push(chat); app.render(); chat.handle("y")
 check(any(l.startswith("Voice note to someone on this Stump") for l, _ in app.current.items),

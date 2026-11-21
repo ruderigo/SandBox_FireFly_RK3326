@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.9.13 (sandbox)
+Build 86 (Stump 1.0.0-beta.86).
+- **Voice notes sound clear.** FireFly sent them squeezed too hard: Codec 2
+  at 1200 bit/s by default (a robotic voice), and Opus at only 6 kbit/s.
+  Now every note is Opus at the best quality that fits its size limit:
+  24 kbit/s, clear speech, whenever it fits (any note to a person, up to
+  15 s in ~45 KB); through a Stump, which takes notes up to 16 KB, the
+  most the note's length allows: 24 kbit/s for 5 s, 13 for 10 s, 8 for
+  15 s, at a constant rate so it uses all the room it has, a step lower
+  only if it came out over. The recorder shows the rate.
+- **Codec 2 1200** stays, as the smallest, for slow LoRa: SETUP → VOICE
+  NOTES → *Send as*, or Y in the recorder.
+- **A sender's clock that's plainly wrong no longer misdates a message**
+  (as the Android FireFly guards it): exactly 30 years early (a board that
+  left its 2000-epoch offset out) is corrected; anything else before 2024,
+  or more than a day ahead, takes the time it arrived (a handheld with no
+  battery clock that started without the internet). A message held for
+  days by a propagation node keeps its real time. (A Stump's lines were
+  already dated by arrival.)
+- Tests: the rates chosen, a 15 s note to a person (~24 kbit/s) and
+  through a Stump (uses its 16 KB); the recorder starts on Opus;
+  `tests/run_times.py` (in CI).
+
 ## 0.9.12 (sandbox)
 Build 86 (Stump 1.0.0-beta.86).
 - **Each DM you send shows once.** A Stump confirms a DM you sent with your
