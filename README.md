@@ -324,6 +324,7 @@ From the `firefly/` folder:
     python3 tests/run_chat_selector.py # chat selector: any voice note, details, new arrivals
     python3 tests/run_audio_out.py     # voice notes follow USB headphones, as Ember does
     python3 tests/run_voice_record.py  # recording and sending voice notes (needs c2enc, opusenc)
+    python3 tests/run_times.py         # a sender's clock that's plainly wrong
     python3 tests/ui_smoke.py          # 6000 random button presses through every screen
     python3 tests/screens.py 720x720 /tmp/shots   # screenshots of every screen
     python3 tests/devices.py /tmp/devshots        # every supported screen geometry, incl. rotated panels
