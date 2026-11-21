@@ -127,7 +127,7 @@ c.settings["voice_send"] = "auto"
 import pygame
 from firefly.ui.app import App
 from firefly.ui.screens import ChatScreen, RecordScreen
-del c.web[stp]
+c.web.pop(stp, None)                         # (FireFly may have dropped it already)
 app = App(c, size=(640, 480))
 app.push(ChatScreen(app, bob)); app.current.handle("y")
 labels = [l for l, _ in app.current.items]
