@@ -261,20 +261,48 @@ DM_VIEW = "\x00dm"                 # the private messages' pane (not a room name
 _MSG_CMD = re.compile(r"^/(msg|m|query)\s+\S+", re.I)
 
 
-def file_messages(msgs):
+def dm_target(content):
+    """("zoe", "hi") for our own "/msg zoe hi" (the text may be empty: a
+    voice note), or None."""
+    parts = (content or "").strip().split(None, 2)
+    if len(parts) >= 2 and _MSG_CMD.match(parts[0] + " " + parts[1]):
+        return parts[1].lstrip("~"), (parts[2] if len(parts) > 2 else "")
+    return None
+
+
+def file_messages(msgs, me=None, echoes=None):
     """Which room each stored message of a Stump conversation belongs to, as the
     Stump's chat page shows one room at a time. Returns [(message, room, part)],
     part "room" or "dm"; a message carrying both room lines and DMs is listed
     once for each. A batch titled #room is that room's; everything else (our
     own lines, the Stump's answers) is in the room we were in then, followed
     from the Stump's own "→ #room" and "= #room" lines."""
-    out, here = [], None
+    out, here, sent = [], None, []
     for m in msgs:
         content, title = m.get("content") or "", m.get("title") or ""
         if m.get("outgoing"):
-            out.append((m, here, "dm" if _MSG_CMD.match(content.strip()) else "room"))
+            t = dm_target(content)
+            if t and t[1]:
+                sent.append(t[1])                      # its echo is coming back: "[DM] <us>: <text>"
+            out.append((m, here, "dm" if t else "room"))
             continue
         items = parse_message(content, title) if content else []
+        # The Stump confirms a DM we sent with our own line ("[DM] <us>: hi"):
+        # ours, already in the chat as what we sent, so not a DM to us.
+        mine = set()
+        for k, it in enumerate(items):
+            if it["kind"] != "dm":
+                continue
+            if it["text"] in sent:
+                sent.remove(it["text"]); mine.add(k)
+            elif me and it["author"] == me:
+                mine.add(k)
+        if mine:
+            if echoes is not None:
+                echoes[m["id"]] = mine
+            items = [it for k, it in enumerate(items) if k not in mine]
+            if not items:
+                continue
         titled = room_name(title) if title.startswith("#") else None
         for it in items:
             if it["kind"] in ("moved", "already_in"):

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.9.12 (sandbox)
+Build 86 (Stump 1.0.0-beta.86).
+- **Each DM you send shows once.** A Stump confirms a DM you sent with your
+  own line (`[DM] <you>: hi`), and FireFly showed that as a DM *to* you,
+  right under what you sent: every line twice, the other person's replies
+  lost between them. The confirmation is now recognised (by its text
+  following your `/msg`, or by your name on that Stump) and not shown;
+  anything else in the same answer (the LoRa notice) still is.
+- **Your DMs read as DMs:** "to fireflyandroid" above what you said,
+  instead of the raw `/msg fireflyandroid ...`; the other person's show
+  their name above what they said (no `[DM]` in the private messages).
+- Tests: `run_rooms.py` replays a real conversation through a Stump
+  (sent over Wi-Fi and LoRa, a DM sent from elsewhere) and draws the pane.
+
 ## 0.9.11 (sandbox)
 Build 86 (Stump 1.0.0-beta.86).
 - **FireFly records and sends voice notes.** Y in a chat → *Record a

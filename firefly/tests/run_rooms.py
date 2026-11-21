@@ -40,6 +40,23 @@ check(ns.rooms["main"]["count"] == 3, "... with how many are in each")
 ns2 = stump.NodeState(); ns2.set_rooms(["main", "quiz"])
 check(ns2.room_order == ["main", "quiz"], "a Wi-Fi poll's room list")
 
+# -- the Stump's confirmation of a DM we sent is ours, not a DM to us -----------
+talk = [dict(id=21, outgoing=1, content="/msg fireflyandroid fuck you", title=""),
+        dict(id=22, outgoing=0, content="[DM] <R36-Operator>: fuck you", title=""),
+        dict(id=23, outgoing=0, content="[DM] <FireFlyAndroid>: fuck youuuu", title=""),
+        dict(id=24, outgoing=1, content="/msg fireflyandroid what your name", title=""),
+        dict(id=25, outgoing=0, content="[DM] <R36-Operator>: what your name\n(over LoRa: it may take a while)", title=""),
+        dict(id=26, outgoing=0, content="[DM] <FireFlyAndroid>: what", title=""),
+        dict(id=27, outgoing=0, content="[DM] <R36-Operator>: sent from the web chat", title="")]
+echoes = {}
+dms = [m["id"] for m, r, p in stump.file_messages(talk, None, echoes) if p == "dm"]
+check(dms == [21, 23, 24, 26, 27], f"each DM we sent once, the replies between them, in order: {dms}")
+check(echoes == {22: {0}, 25: {0}}, "the Stump's echoes recognised by their text")
+dms = [m["id"] for m, r, p in stump.file_messages(talk, "R36-Operator") if p == "dm"]
+check(dms == [21, 23, 24, 26], "... and by our name on the Stump (a DM we sent from elsewhere)")
+check(stump.dm_target("/msg zoe hi there") == ("zoe", "hi there") and stump.dm_target("/msg zoe") == ("zoe", ""),
+      "our /msg read as who it's to and what it says")
+
 # -- the screen ---------------------------------------------------------------
 t = tempfile.mkdtemp(); p = Paths(t); p.ensure()
 s = Settings(p.settings); s["radio"]["enabled"] = False; s["auto_interface"] = False; s["share_instance"] = False; s.save()
@@ -100,8 +117,21 @@ chat.pending = None
 check(("A", "reply") in chat.hints, "hint: A replies to a DM")
 chat.sel_id = 3; chat.handle("a")
 check(isinstance(app.current, Compose) and "bob" in app.current.title, "A on bob's DM: write to bob")
+seen = []
+orig = ChatScreen._layout
+def spy(self, m, f, maxw, is_stump, room_label=True, part=None):
+    h, paint = orig(self, m, f, maxw, is_stump, room_label, part)
+    seen.append((m["id"], m["content"]))
+    return h, paint
+ChatScreen._layout = spy
 sent.clear(); app.current.on_done("on my way"); app.pop()
 check(sent == [(stp, "/msg bob on my way")], "... sent as /msg bob")
+c.store.add_message(stp, True, "/msg bob on my way", "delivered", ts=time.time())
+c.store.add_message(stp, False, "[DM] <R36-Operator>: on my way", "received", ts=time.time() + 0.01, unread=True)
+chat.view = stump.DM_VIEW; seen.clear(); app.render()
+ChatScreen._layout = orig
+check(any(c == "/msg bob on my way" for _, c in seen) and not any("[DM] <" in c and "on my way" in c for _, c in seen),
+      "our DM shows once in the private messages")
 chat.handle("right")
 check(chat.shown_view() == "main", "→ from the private messages: back to the first room")
 for size in ((640, 480), (720, 720)):

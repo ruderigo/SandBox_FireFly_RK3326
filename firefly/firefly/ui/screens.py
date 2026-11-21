@@ -383,7 +383,8 @@ class ChatScreen(Screen):
             return msgs
         view = self.shown_view()
         out, self._part = [], {}
-        for m, room, part in stump.file_messages(msgs):
+        self._echoes = {}
+        for m, room, part in stump.file_messages(msgs, self._me(), self._echoes):
             if (part == "dm") if view == stump.DM_VIEW else (part == "room" and (room or self._first_room()) == view):
                 if m["id"] not in self._part:
                     out.append(m)
@@ -394,6 +395,12 @@ class ChatScreen(Screen):
     def _ns(self):
         return self.app.core.stump_state.get(self.peer)
 
+    def _me(self):
+        """Our name on this Stump, when known (its Wi-Fi gives it): its
+        confirmation of a DM we sent carries it."""
+        web = self.app.core.web.get(self.peer)
+        return getattr(web, "nick", None) or None
+
     def _first_room(self):
         ns = self._ns()
         return stump.room_name(ns.room) if ns and ns.room else "main"
@@ -401,7 +408,7 @@ class ChatScreen(Screen):
     def rooms(self):
         """The Stump's rooms to move between with ←/→, then its private messages."""
         ns = self._ns()
-        names = stump.rooms_seen(stump.file_messages(self.app.core.store.messages(self.peer)), ns)
+        names = stump.rooms_seen(stump.file_messages(self.app.core.store.messages(self.peer), self._me()), ns)
         here = self._first_room()
         if here not in names:
             names.append(here)
@@ -676,7 +683,7 @@ class ChatScreen(Screen):
         joining = self.joining[0] if self.joining else (self.pending[0] if self.pending else None)
         if shown == stump.DM_VIEW:
             self.dm_seen = time.time()
-        unread_dm = sum(1 for m, _, part in stump.file_messages(self.app.core.store.messages(self.peer))
+        unread_dm = sum(1 for m, _, part in stump.file_messages(self.app.core.store.messages(self.peer), self._me())
                         if part == "dm" and not m["outgoing"] and m["ts"] > self.dm_seen)
         pills = []
         for r in self.rooms():
@@ -724,10 +731,22 @@ class ChatScreen(Screen):
         if is_stump and not out:
             if room_label and m["title"] and m["title"].startswith("#"):
                 lines.append((f.mono_small, "#" + stump.room_name(m["title"]), T.EMBER))   # the room this batch belongs to
-            for parsed in stump.parse_message(m["content"], m["title"] or ""):
+            echo = getattr(self, "_echoes", {}).get(m["id"], set())
+            for k, parsed in enumerate(stump.parse_message(m["content"], m["title"] or "")):
                 if part is not None and (parsed["kind"] == "dm") != (part == "dm"):
                     continue
+                if k in echo:
+                    continue                           # the Stump's confirmation of a DM we sent
+                if part == "dm" and parsed["kind"] == "dm" and not parsed.get("voice"):
+                    # In the private messages "[DM]" says nothing: who it's from, then what they said.
+                    lines.append((f.mono_small, parsed["author"], T.DM_NICK))
+                    lines += [(f.body, ln, T.TEXT) for ln in D.wrap(f.body, parsed["text"], maxw - 20)]
+                    continue
                 lines += [(f.body, ln, c) for ln, c in _stump_render(parsed, f, maxw - 20)]
+        elif is_stump and out and stump.dm_target(m["content"]):
+            who, text = stump.dm_target(m["content"])   # our "/msg zoe hi": shown as the DM it is
+            lines = [(f.mono_small, f"to {who}", T.DM_NICK)]
+            lines += [(f.body, ln, T.TEXT) for ln in D.wrap(f.body, text, maxw - 20)] if text else []
         elif m["content"] and not out and m.get("renderer") in (1, 2, 3):
             lines = _formatted(m["content"], m["renderer"], f, maxw - 20)
         elif m["content"]:
