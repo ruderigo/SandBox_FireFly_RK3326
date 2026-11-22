@@ -621,6 +621,58 @@ class Player:
             self.error = str(e)
             self.playing_id = None
 
+    # ------------------------------------------------ the message sound
+    def chime_wav(self):
+        """The message sound: two short notes going up (E6 then A6), 0.2 s,
+        made once, as a WAV next to the decoded notes."""
+        path = getattr(self, "_chime_path", None)
+        if path and os.path.isfile(path):
+            return path
+        import math, struct, tempfile, wave
+        rate, out = 22050, []
+        for freq, start, dur in ((1318.5, 0.0, 0.09), (1760.0, 0.08, 0.12)):
+            for i in range(int(dur * rate)):
+                t = i / rate
+                env = min(1.0, t / 0.005) * math.exp(-t * 28)       # quick in, gentle out
+                out.append((int((start * rate)) + i, 0.32 * env * math.sin(2 * math.pi * freq * t)))
+        n = int(0.22 * rate)
+        buf = [0.0] * n
+        for k, v in out:
+            if k < n:
+                buf[k] += v
+        path = os.path.join(tempfile.gettempdir(), "firefly-message.wav")
+        with wave.open(path, "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate)
+            w.writeframes(b"".join(struct.pack("<h", max(-32767, min(32767, int(x * 32767)))) for x in buf))
+        self._chime_path = path
+        return path
+
+    def chime(self):
+        """Play the message sound, on the same output as voice notes (USB
+        headphones when plugged in). Never over a voice note that's playing.
+        Returns where it played, or None."""
+        if self.busy():
+            return None
+        wav = self.chime_wav()
+        dev, label = pick_output()
+        try:
+            if dev:
+                subprocess.Popen(["aplay", "-q", "-D", dev, wav], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                return label
+            import pygame
+            if not pygame.mixer.get_init():
+                pygame.mixer.init(frequency=48000, size=-16, channels=2)
+            snd = pygame.mixer.Sound(wav)
+            snd.play()
+            self._chime_sound = snd                   # (kept, or it may be collected mid-play)
+            return label
+        except Exception as e:
+            if shutil.which("aplay"):
+                subprocess.Popen(["aplay", "-q", wav], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                return label
+            self.log(f"audio: no message sound ({e})")
+            return None
+
     def _play_pygame(self, wav):
         try:
             import pygame

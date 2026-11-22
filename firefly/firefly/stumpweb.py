@@ -203,10 +203,10 @@ class StumpWeb:
                 continue                      # the room's scrollback: not news
             if str(m.get("nick", "")) == self.nick:
                 continue                      # our own line, already in the chat
-            self._store(m)
+            self._store(m, news=not first)
         self.since = top
 
-    def _store(self, m):
+    def _store(self, m, news=True):
         key = f"web:{self.lxmf[:8]}:{m.get('id')}"
         if self.core.store.has_message(key):
             return
@@ -222,6 +222,12 @@ class StumpWeb:
         # (a CAM has no battery clock), which put new lines among yesterday's.
         self.core.store.add_message(self.lxmf, False, content, "received", ts=time.time(),
                                     title=title, method="wifi", lxm_hash=key, verified=True, unread=True, **audio)
+        if not news:
+            return                                     # the backlog it found as it connected: not news
+        if m.get("kind") == "dm":
+            self.core.notify("dm")
+        elif m.get("kind") in ("msg", "action"):
+            self.core.notify("room")
 
     def _fetch_voice(self, mid, v):
         try:

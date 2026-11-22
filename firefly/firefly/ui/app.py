@@ -31,6 +31,7 @@ KEY_MAP = {
 class App:
     def __init__(self, core, fullscreen=False, size=(720, 720), display=None, rotate_override=None):
         self.core = core
+        self._started_at = time.time()  # (no message sound for what arrives as it starts)
         os.environ.setdefault("SDL_VIDEO_CENTERED", "1")
         # Only the subsystems we need: no audio device is opened.
         pygame.display.init()
@@ -320,6 +321,12 @@ class App:
             self._activity = False
             self.events()
             self.player.pump()
+            # The message sound: when a message arrived that deserves it (core.notify),
+            # at most one every 2 s, not at start-up for the backlog.
+            due = getattr(self.core, "chime_due", 0)
+            if due and due > getattr(self, "_chimed", 0) + 2 and time.time() - self._started_at > 5:
+                self._chimed = due
+                self.player.chime()
             if self.player.error:
                 self.toast(self.player.error, 6)
                 self.player.error = None

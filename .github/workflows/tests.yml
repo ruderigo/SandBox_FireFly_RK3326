@@ -63,6 +63,10 @@ jobs:
         timeout-minutes: 1
         run: python tests/run_times.py
 
+      - name: The message sound
+        timeout-minutes: 2
+        run: python tests/run_message_sound.py
+
       - name: Radio manager against simulated RNodes
         timeout-minutes: 3
         run: python tests/run_radio.py

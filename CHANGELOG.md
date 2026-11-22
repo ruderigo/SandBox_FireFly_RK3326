@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.9.14 (sandbox)
+Build 86 (Stump 1.0.0-beta.86).
+- **A message sound.** FireFly made no sound when a message arrived. Now
+  two short notes going up (0.2 s) when a message comes from a person, or
+  a private message through a Stump. SETUP → SOUND → *Message sound*:
+  people and DMs (the default), everything (a Stump room's lines too), or
+  off; changing it plays it once. Never for the backlog waiting when
+  FireFly starts or reaches a Stump's Wi-Fi, a Stump's answer to your own
+  command, your own DMs coming back, or over a voice note; at most one
+  every 2 s. It plays where voice notes do: USB headphones when plugged
+  in, else the built-in speaker.
+- **SETUP → SOUND** groups *Plays on*, *Records from* and *Message sound*;
+  VOICE NOTES keeps the SD copy and *Send as*.
+- **Docs.** A new [QUICKSTART.md](QUICKSTART.md): install, first start,
+  the tabs, the buttons, the sounds, voice notes, Stumps, help, on one
+  page. The README has a **Sound** section: everything FireFly plays, when,
+  where, the settings, recording, quality, the tools it needs.
+  INSTALL.md's commands have no comment lines (some shells take them as
+  commands); the README's test list is a table for the same reason.
+- Tests: `tests/run_message_sound.py` (when it plays and doesn't, the
+  backlog, USB headphones, never over a voice note; in CI).
+
 ## 0.9.13 (sandbox)
 Build 86 (Stump 1.0.0-beta.86).
 - **Voice notes sound clear.** FireFly sent them squeezed too hard: Codec 2

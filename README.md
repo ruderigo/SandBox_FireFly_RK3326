@@ -14,13 +14,15 @@ re-implementation, so compatibility comes from the reference code itself.
 
 ![FireFly screens: chats, a conversation, a Stump node, the keyboard, network and setup](docs/screenshots.png)
 
-**Status:** v0.9.13 (sandbox: beta testing against [SandBox_Stump_On](https://github.com/ruderigo/SandBox_Stump_On); stable FireFly is [FireFly_RK3326_R36MAX_R36S](https://github.com/ruderigo/FireFly_RK3326_R36MAX_R36S)). Runs on RK3326 handhelds with the dArkOS image of
+**Status:** v0.9.14 (sandbox: beta testing against [SandBox_Stump_On](https://github.com/ruderigo/SandBox_Stump_On); stable FireFly is [FireFly_RK3326_R36MAX_R36S](https://github.com/ruderigo/FireFly_RK3326_R36MAX_R36S)). Runs on RK3326 handhelds with the dArkOS image of
 [arkos4clone](https://github.com/lcdyk0517/arkos4clone); tested on an R36MAX.
 See [Supported devices](#supported-devices).
 
 ## Install
 
-Full step-by-step guide: **[INSTALL.md](INSTALL.md)**. In short:
+New to FireFly? **[QUICKSTART.md](QUICKSTART.md)**: install, first start,
+the buttons and the sounds on one page. Full step-by-step guide:
+**[INSTALL.md](INSTALL.md)**. In short:
 
 1. Flash RNode firmware onto a LoRa board (`rnodeconf --autoinstall`) and
    plug it into the handheld's USB.
@@ -253,6 +255,54 @@ reads `…` until the Stump has you there (or says why not). After the
 rooms, **DMs**: the Stump's private messages to you, with how many are new;
 A on one answers its author (`/msg`), START writes to anyone.
 
+## Sound
+
+Everything FireFly plays, and when. Quick reference in
+[QUICKSTART.md](QUICKSTART.md#sound).
+
+**Where it plays.** On a USB sound device when one is plugged in (USB-C
+headphones, a headset, a DAC), otherwise on the handheld's built-in
+speaker, as Ember does. It's chosen again for every sound, so plugging or
+unplugging needs nothing else; if the USB device fails, that sound plays on
+the built-in speaker. SETUP → SOUND → *Plays on* says which.
+`FIREFLY_OUT=plughw:0,0` (any ALSA device) fixes it.
+
+**What it plays.**
+
+| Sound | When | Setting |
+|---|---|---|
+| A voice note | You press A on it in a chat (or X in the recorder, to hear yours before sending) | always on |
+| The message sound: two short notes going up, 0.2 s | A message arrives: from a person, or a private message (DM) through a Stump. With *everything*, a Stump room's lines too | SETUP → SOUND → *Message sound*: people and DMs (default), everything, off |
+
+The message sound is never played for messages that were waiting when
+FireFly started or when it reached a Stump's Wi-Fi (the backlog), for a
+Stump's answer to your own command, for your own DMs coming back from the
+Stump, or over a voice note that's playing; at most one every 2 seconds.
+Changing the setting plays it once so you can hear it.
+
+FireFly plays nothing else: no key clicks, no start-up sound. Volume is the
+handheld's own (its volume buttons).
+
+**Recording.** Voice notes are recorded from a USB mic or headset when one
+is plugged in, otherwise from the built-in mic; SETUP → SOUND → *Records
+from* says which, `FIREFLY_MIC=plughw:1,0` fixes it. Y in a chat →
+*Record a voice note* (through a Stump: *Voice note to <name>*, a private
+message, as the Stump's own web chat sends them). A records, A stops (it
+stops by itself at 15 s), X listens, Y switches the codec, A sends, B
+throws it away; under 0.6 s isn't sent.
+
+**Quality.** Opus at the best quality that fits: 24 kbit/s, clear speech,
+whenever it does (any note to a person). Through a Stump, which takes notes
+up to 16 KB, the most the note's length allows: 24 kbit/s for 5 s, 13 for
+10 s, 8 for 15 s. Codec 2 1200, the smallest (15 s in 2.3 KB, a robotic
+voice), for slow LoRa: SETUP → VOICE NOTES → *Send as*, or Y in the
+recorder. Received notes play whatever they came in: Opus, Codec 2 (all
+modes), and are copied to the SD card as WAV unless SETUP says not.
+
+**What it needs.** `aplay` and `arecord` (alsa-utils), `opusdec`/`opusenc`
+(opus-tools), `c2dec`/`c2enc` (codec2); `install.sh` adds them, and the
+device report (`deploy/device_report.sh`) lists which are there.
+
 ## Controls
 
 | Button | Lists | Chat | Keyboard |
@@ -308,46 +358,35 @@ Runs on any desktop with Python 3.10+, from the `firefly/` folder:
 
 ## Tests
 
-From the `firefly/` folder:
+From the `firefly/` folder, run any of these (each one on its own):
 
-    python3 tests/run_integration.py   # LXMF round trips, links, Stump /auth, over localhost TCP
-    python3 tests/run_propagation.py   # offline peer: fallback to a propagation node
-    python3 tests/run_radio.py         # radio manager against simulated RNodes (no hardware needed)
-    STUMP_DIR=~/Stump python3 tests/run_real_stump.py   # against a real computer Stump (see the file); skipped without STUMP_DIR
-    python3 tests/run_interop.py       # other LXMF apps: address codes, commands, Markdown/Micron
-    python3 tests/run_stumpweb.py      # chat with a Stump over Wi-Fi, against a fake of its web API
-    python3 tests/run_lan.py           # the handheld's network, read-only and followed live; STUMP? answers
-    python3 tests/run_stump_protocol.py # Stump 1.0.0-beta.34 lines: #lora-mesh, nick@stump, ⧗, [LoRa]
-    python3 tests/run_radiojson.py     # the Stump provisioner's radio.json, and the network passphrase
-    python3 tests/run_voice.py         # voice notes: Codec 2 spec test vector, Opus, SD copy (needs opusdec, c2dec)
-    python3 tests/run_block.py         # delete and block, across a restart
-    python3 tests/run_chat_selector.py # chat selector: any voice note, details, new arrivals
-    python3 tests/run_audio_out.py     # voice notes follow USB headphones, as Ember does
-    python3 tests/run_voice_record.py  # recording and sending voice notes (needs c2enc, opusenc)
-    python3 tests/run_times.py         # a sender's clock that's plainly wrong
-    python3 tests/ui_smoke.py          # 6000 random button presses through every screen
-    python3 tests/screens.py 720x720 /tmp/shots   # screenshots of every screen
-    python3 tests/devices.py /tmp/devshots        # every supported screen geometry, incl. rotated panels
+| Command | What it checks |
+|---|---|
+| `python3 tests/run_integration.py` | LXMF round trips, links, Stump /auth, over localhost TCP |
+| `python3 tests/run_propagation.py` | offline peer: fallback to a propagation node |
+| `python3 tests/run_radio.py` | radio manager against simulated RNodes (no hardware needed) |
+| `STUMP_DIR=~/Stump python3 tests/run_real_stump.py` | against a real computer Stump (see the file); skipped without STUMP_DIR |
+| `python3 tests/run_interop.py` | other LXMF apps: address codes, commands, Markdown/Micron |
+| `python3 tests/run_stumpweb.py` | chat with a Stump over Wi-Fi, against a fake of its web API |
+| `python3 tests/run_lan.py` | the handheld's network, read-only and followed live; STUMP? answers |
+| `python3 tests/run_stump_protocol.py` | Stump 1.0.0-beta.34 lines: #lora-mesh, nick@stump, ⧗, [LoRa] |
+| `python3 tests/run_radiojson.py` | the Stump provisioner's radio.json, and the network passphrase |
+| `python3 tests/run_voice.py` | voice notes: Codec 2 spec test vector, Opus, SD copy (needs opusdec, c2dec) |
+| `python3 tests/run_block.py` | delete and block, across a restart |
+| `python3 tests/run_chat_selector.py` | chat selector: any voice note, details, new arrivals |
+| `python3 tests/run_audio_out.py` | voice notes follow USB headphones, as Ember does |
+| `python3 tests/run_voice_record.py` | recording and sending voice notes (needs c2enc, opusenc) |
+| `python3 tests/run_times.py` | a sender's clock that's plainly wrong |
+| `python3 tests/run_message_sound.py` | the message sound: when, where, never over a voice note |
+| `python3 tests/ui_smoke.py` | 6000 random button presses through every screen |
+| `python3 tests/screens.py 720x720 /tmp/shots` | screenshots of every screen |
+| `python3 tests/devices.py /tmp/devshots` | every supported screen geometry, incl. rotated panels |
 
 ## Known limits
 
-- Voice notes play on USB-C headphones (or any USB sound device) when one is
-  plugged in, and on the built-in speaker otherwise, chosen again for every
-  note, as Ember does; SETUP → VOICE NOTES → *Plays on* says which.
-  `FIREFLY_OUT=plughw:0,0` (any ALSA device) fixes it.
-- **Recording voice notes**: Y in a chat → *Record a voice note* (through a
-  Stump: *Voice note to <name>*, a private message, as the Stump's own web
-  chat sends them). A records, A stops (or it stops at 15 s), X listens,
-  Y switches the codec, A sends, B throws it away. Opus at the best
-  quality that fits: 24 kbit/s (clear speech) whenever it does; through a
-  Stump, which takes notes up to 16 KB, the most a note that long allows
-  (a 5 s note 24, 10 s 13, 15 s 8 kbit/s). Codec 2 1200, the smallest
-  (15 s in 2.3 KB, robotic), for slow LoRa: SETUP → VOICE NOTES →
-  *Send as*, or Y in the recorder. The mic is a USB mic or headset when
-  one is plugged in, else the built-in one; *Records from* says which,
-  `FIREFLY_MIC=plughw:1,0` fixes it. Needs `arecord`, `c2enc`/`opusenc`
-  (alsa-utils, codec2, opus-tools: install.sh adds them). Images and files
-  are listed, not shown or sent.
+- Images and files are listed, not shown or sent.
+- Sound: see [Sound](#sound). The built-in speaker on some R36MAX units is
+  noisy (the sound chip's setup, not FireFly): USB-C headphones sound clean.
 - Stamp generation is slow on the Cortex-A35: messages to peers that demand
   high stamp costs can sit at `⚙` for a while.
 - No Bluetooth: the RNode must be on USB (or reachable over TCP).
