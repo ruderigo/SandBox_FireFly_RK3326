@@ -76,4 +76,18 @@ app.handle = None
 app.current.handle("y"); shot("menu_stump")
 app.stack.clear(); app.push(ChatScreen(app, bob))
 c = Compose(app, "To Sideband Bob", lambda t: None, initial="Bonjour! On se voit au sommet à 20h ?"); app.push(c); shot("compose")
+# SETUP at its SOUND rows; the voice-note recorder, a note just recorded.
+app.stack.clear(); app.switch_tab(4); st_tab = app.tabs[4]
+st_tab.sel = [r[0] for r in st_tab.rows()].index("msgsound"); shot("setup_sound")
+from firefly.ui.screens import RecordScreen
+from firefly import voice as _voice
+import math as _m, struct as _st
+rec = RecordScreen(app, bob); app.push(rec)
+rec.rec.pcm = bytearray(b"".join(_st.pack("<h", int(6000 * _m.sin(i / 9))) for i in range(16000 * 6)))
+rec.rec.mic = "USB: USB-C Headset"
+try:
+    rec.data = _voice.encode(rec.rec.pcm, rec.mode); rec.state = "recorded"
+except _voice.VoiceError:
+    rec.state = "ready"                      # (no opusenc here: the recorder as it opens)
+shot("record")
 core.stop(); os._exit(0)

@@ -273,15 +273,15 @@ class App:
         hints = self.current.hints
         fs = f.mono_small
         # Every hint on the line: closer together when they wouldn't fit.
-        gap = 12
-        for gap in (12, 8, 5):
-            if 10 + sum(fs.size(b)[0] + 14 + fs.size(l)[0] + gap for b, l in hints) <= W:
+        gap, pad, after = 12, 10, 4
+        for gap, pad, after in ((12, 10, 4), (8, 10, 4), (5, 8, 3), (3, 6, 2)):
+            if 10 + sum(fs.size(b)[0] + pad + after + fs.size(l)[0] + gap for b, l in hints) <= W:
                 break
         for btn, label in hints:
-            w = fs.size(btn)[0] + 10
+            w = fs.size(btn)[0] + pad
             D.box(surf, pygame.Rect(x, y, w, f.line - 2), T.BORDER, 4)
-            D.text(surf, fs, btn, (x + 5, y + 1), T.TEXT)
-            x += w + 4
+            D.text(surf, fs, btn, (x + pad // 2, y + 1), T.TEXT)
+            x += w + after
             x += D.text(surf, fs, label, (x, y + 1), T.MUTED) + gap
             if x > W - 40:
                 break
