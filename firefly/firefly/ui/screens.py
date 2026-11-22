@@ -1464,7 +1464,7 @@ class SettingsTab(ListScreen):
             from .. import radiojson
             path = radiojson.find(core.paths.home)
             if not path:
-                app.toast("No radio.json found (looked in /roms/firefly and /roms/ports/meshcommandermax)", 5)
+                app.toast("No radio.json found (looked in firefly/ on the SD card or /data/ark, and ports/meshcommandermax)", 5)
                 return
             ok, msg = radiojson.apply(s, path, force=True)
             core.radio_json_note = msg if ok else "radio.json not used: " + msg

@@ -31,7 +31,8 @@ def candidates(home=None):
     out = []
     if home:
         out.append(os.path.join(home, NAME))
-    for root in ("/roms2", "/roms"):
+    from . import system
+    for root in [system.ROOT + r for r in system.data_roots()]:   # RK3326 Linux: /data/ark
         out += [f"{root}/firefly/{NAME}",
                 f"{root}/ports/firefly/{NAME}",
                 f"{root}/ports/meshcommandermax/{NAME}",   # where the Stump provisioner says to copy it

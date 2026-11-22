@@ -70,6 +70,9 @@ echo "== 5/6 Remove Ports launchers"
 for p in /roms/ports/FireFly.sh /roms2/ports/FireFly.sh /roms/ports/RetiCom.sh /roms2/ports/RetiCom.sh; do
   [ -f "$p" ] && sudo rm -f "$p" && echo "   removed $p"
 done
+# RK3326 Linux: only the dock entry FireFly added itself (the image's own stays).
+[ -f /data/ark/apps/firefly.json ] && grep -q '"FireFly"' /data/ark/apps/firefly.json && rm -f /data/ark/apps/firefly.json \
+  && echo "   removed /data/ark/apps/firefly.json"
 
 echo "== 6/6 Things FireFly doesn't own (reported, not touched unless asked)"
 if pgrep -x rnsd >/dev/null || pgrep -f "bin/rnsd" >/dev/null; then

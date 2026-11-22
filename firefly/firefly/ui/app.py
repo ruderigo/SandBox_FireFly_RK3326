@@ -98,7 +98,8 @@ class App:
             if errors:
                 self.toast(f"Copy failed: {errors[-1]}", 5)
             else:
-                where = folder.replace("/roms2/", "SD card (2nd) /").replace("/roms/", "SD card /")
+                from .. import system
+                where = system.where_label(folder)
                 self.toast(f"{copied} new voice note(s) copied to {where}", 5)
         self.toast("Copying voice notes to the SD card…")
         threading.Thread(target=job, daemon=True).start()

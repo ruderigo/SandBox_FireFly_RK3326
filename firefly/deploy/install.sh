@@ -109,12 +109,34 @@ fi
 echo "== 4/5 Serial port access for the LoRa radio"
 sudo usermod -aG dialout "$USER" || true
 
-echo "== 5/5 Ports menu entry"
-PORTS=/roms/ports
-[ -d /roms2/ports ] && PORTS=/roms2/ports
-sudo mkdir -p "$PORTS"
-sudo cp "$APP/deploy/FireFly.sh" "$PORTS/FireFly.sh"
-echo "   added $PORTS/FireFly.sh"
+echo "== 5/5 Where to open it"
+chmod +x "$APP/deploy/"*.sh 2>/dev/null || true      # (a zip unpacked by Python loses the bit)
+OPEN_IT="Ports > FireFly"
+if [ -d /roms/ports ] || [ -d /roms2/ports ]; then
+  # arkos4clone / dArkOS / ArkOS: EmulationStation's Ports menu.
+  PORTS=/roms/ports
+  [ -d /roms2/ports ] && PORTS=/roms2/ports
+  sudo cp "$APP/deploy/FireFly.sh" "$PORTS/FireFly.sh"
+  echo "   added $PORTS/FireFly.sh"
+elif [ -d /usr/share/rk/apps ]; then
+  # RK3326 Linux: its dock. The image lists FireFly already; an older one
+  # without that entry gets ours, in the dock's own folder for apps.
+  OPEN_IT="FireFly on the dock"
+  if [ -f /usr/share/rk/apps/firefly.json ]; then
+    echo "   RK3326 Linux: FireFly is on the dock already"
+  else
+    mkdir -p /data/ark/apps 2>/dev/null || sudo mkdir -p /data/ark/apps
+    printf '%s\n' '{"name": "FireFly", "icon": "firefly", "group": "Comms",' \
+      ' "about": "Messages over LoRa and Wi-Fi",' \
+      " \"exec\": [\"$APP/deploy/FireFly.sh\"]}" > /tmp/firefly-dock.json
+    { cp /tmp/firefly-dock.json /data/ark/apps/firefly.json 2>/dev/null || sudo cp /tmp/firefly-dock.json /data/ark/apps/firefly.json; } \
+      && echo "   RK3326 Linux: added FireFly to the dock (/data/ark/apps/firefly.json)"
+    rm -f /tmp/firefly-dock.json
+  fi
+else
+  OPEN_IT="$APP/deploy/FireFly.sh"
+  echo "   no Ports menu or dock here: start it with $APP/deploy/FireFly.sh"
+fi
 
 echo
 echo "Radio check (plug the RNode into the USB hub first):"
@@ -125,5 +147,5 @@ lsmod | grep -E "cp210x|ch341|cdc_acm|ftdi_sio" || echo "  (no USB-serial driver
 "$APP/venv/bin/python" -c "import RNS, LXMF, pygame; print('Reticulum', RNS.__version__, 'from', RNS.__file__.rsplit('/RNS/',1)[0]); print('LXMF', LXMF.__version__, '/ pygame', pygame.version.ver)"
 sync
 echo
-echo "Done. Reboot or restart EmulationStation, then open Ports > FireFly."
+echo "Done. Reboot (or restart EmulationStation), then open $OPEN_IT."
 echo "(A reboot is also what applies the new serial-port permission.)"

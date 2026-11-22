@@ -107,6 +107,9 @@ def pick_mic(asound=ASOUND):
     forced = os.environ.get("FIREFLY_MIC", "").strip()
     if forced:
         return forced, forced
+    from . import system
+    if system.managed_audio():                   # RK3326 Linux: its "default" follows the USB mic
+        return "default", system.default_label("mic")
     usb = find_usb_capture(asound)
     if usb:
         return usb[0], "USB: " + usb[1]
@@ -121,6 +124,9 @@ def pick_output(asound=ASOUND):
     forced = os.environ.get("FIREFLY_OUT", "").strip()
     if forced:
         return forced, forced
+    from . import system
+    if system.managed_audio():                   # RK3326 Linux: its "default" follows USB and the jack
+        return "default", system.default_label("out")
     usb = find_usb_output(asound)
     if usb:
         return usb[0], "USB: " + usb[1]
@@ -362,9 +368,10 @@ def export_dir(setting="auto"):
     Falls back to ~/firefly-voice if that isn't writable."""
     if setting and setting != "auto":
         return setting
+    from . import system
     env = os.environ.get("FIREFLY_SD")
     candidates = [env] if env else []
-    candidates += ["/roms2", "/roms"]
+    candidates += [system.ROOT + r for r in system.data_roots()]   # /roms2, /roms; RK3326 Linux: /data/ark
     for base in candidates:
         if base and os.path.isdir(base) and os.access(base, os.W_OK):
             return os.path.join(base, SD_FOLDER_NAME)
