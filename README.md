@@ -12,7 +12,7 @@ but nothing in it depends on them.
 It uses the official Python `rns` and `lxmf` libraries, not a
 re-implementation, so compatibility comes from the reference code itself.
 
-![FireFly screens: chats, a conversation, a Stump node, the keyboard, network and setup](docs/screenshots.png)
+![FireFly screens: chats, the Stumps, a Stump's rooms, its private messages, the voice-note recorder, and SETUP's sound settings](docs/screenshots.png)
 
 **Status:** v0.9.14 (sandbox: beta testing against [SandBox_Stump_On](https://github.com/ruderigo/SandBox_Stump_On); stable FireFly is [FireFly_RK3326_R36MAX_R36S](https://github.com/ruderigo/FireFly_RK3326_R36MAX_R36S)). Runs on RK3326 handhelds with the dArkOS image of
 [arkos4clone](https://github.com/lcdyk0517/arkos4clone); tested on an R36MAX.
