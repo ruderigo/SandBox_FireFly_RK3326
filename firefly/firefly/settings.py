@@ -39,6 +39,7 @@ DEFAULTS = {
     "packed_text": True,             # packed text with Stumps and apps that announce it (Stump beta.82)
     "stump_prefer": "wifi",          # the route a Stump uses for your DMs while you're on its network
     "voice_to_sd": True,             # copy every voice note to the SD card as a WAV
+    "message_sound": "people",       # a sound when a message arrives: people (and DMs through a Stump), all (Stump rooms too), off
     "voice_send": "auto",            # voice notes: auto (Opus, the best quality that fits), codec2 (the smallest, for slow LoRa)
     "voice_export_dir": "auto",      # auto = /roms(2)/firefly-voice, visible on a computer
     "screen_rotation": "auto",       # auto | 0 | 90 | 180 | 270 (clockwise); Select+R1 cycles it

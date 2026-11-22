@@ -10,7 +10,7 @@ In the commands below, replace:
 - `<handheld-ip>` with your handheld's IP address (shown in its Wi-Fi or
   network info screen),
 - `FireFly-RK3326-X.Y.Z.zip` with the zip's file name (currently
-  `FireFly-RK3326-0.9.13.zip`; releases up to 0.6.2 were named `firefly_vX.Y.Z.zip`).
+  `FireFly-RK3326-0.9.14.zip`; releases up to 0.6.2 were named `firefly_vX.Y.Z.zip`).
 
 ---
 
@@ -129,29 +129,35 @@ always roll back (section 9).
 
 Back in the **SSH session on the handheld**:
 
-```bash
-# 1. Unpack into a temporary folder
-mkdir -p ~/firefly-new
-unzip -o ~/FireFly-RK3326-X.Y.Z.zip -d ~/firefly-new
-
-# 2. Remove any earlier install; keeps your address and settings (safe on a first install too)
-bash ~/firefly-new/firefly/deploy/cleanup.sh
-
-# 3. Install
-bash ~/firefly-new/firefly/deploy/install.sh
-
-# 4. Remove the temporary files and the copied zip
-rm -rf ~/firefly-new ~/FireFly-RK3326-X.Y.Z.zip
-
-# 5. Reboot: this also applies the new serial-port permission
-sudo reboot
-```
+1. Unpack into a temporary folder:
+   ```bash
+   mkdir -p ~/firefly-new
+   unzip -o ~/FireFly-RK3326-X.Y.Z.zip -d ~/firefly-new
+   ```
+2. Remove any earlier install (it keeps your address and settings; safe on
+   a first install too):
+   ```bash
+   bash ~/firefly-new/firefly/deploy/cleanup.sh
+   ```
+3. Install:
+   ```bash
+   bash ~/firefly-new/firefly/deploy/install.sh
+   ```
+4. Remove the temporary files and the copied zip:
+   ```bash
+   rm -rf ~/firefly-new ~/FireFly-RK3326-X.Y.Z.zip
+   ```
+5. Reboot (this also applies the new serial-port permission):
+   ```bash
+   sudo reboot
+   ```
 
 What the installer does:
 
 - installs prebuilt system packages (`python3-pygame`,
-  `python3-cryptography`, `python3-serial`, `fonts-dejavu-core`, and the
-  voice-note decoders `opus-tools` and `codec2`), so nothing is compiled;
+  `python3-cryptography`, `python3-serial`, `fonts-dejavu-core`, the
+  voice-note codecs `opus-tools` and `codec2`, and `alsa-utils` to play
+  and record), so nothing is compiled;
   that matters because the handheld has no swap. Packages already present
   are not downloaded again,
 - puts the app in `/home/ark/firefly`, on the Linux home partition; the

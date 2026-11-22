@@ -133,6 +133,7 @@ class Core:
         self.paths = paths
         self.paths.ensure()
         self.log = log
+        self.chime_due = 0.0          # when a message last arrived that deserves the message sound
         self.settings = Settings(paths.settings)
         from .restore import restore_from_backups
         restored, src = restore_from_backups(self.settings, os.path.dirname(os.path.abspath(paths.home)), log)
@@ -545,6 +546,20 @@ class Core:
                          daemon=True).start()
         return msg_id
 
+    MESSAGE_SOUND = ("people", "all", "off")
+
+    def notify(self, kind):
+        """A message arrived that may deserve the message sound: kind "person"
+        (from someone, not a Stump), "dm" (a private message through a Stump)
+        or "room" (a Stump room's chatter). SETUP's Message sound decides:
+        people (the default: people and DMs), all, or off. The screen plays it
+        (one at a time, not over a voice note)."""
+        want = self.settings.get("message_sound", "people")
+        if want == "off" or (want == "people" and kind == "room"):
+            return False
+        self.chime_due = time.time()
+        return True
+
     def voice_mode_for(self, peer_hex):
         """The codec a voice note goes in: Opus, at the best quality its size
         limit allows (voice.opus_kbps), unless SETUP asks for Codec 2, the
@@ -772,6 +787,16 @@ class Core:
                                rssi=getattr(lxm, "rssi", None), snr=getattr(lxm, "snr", None),
                                verified=verified, attachments=", ".join(attachments) or None,
                                unread=not (asked and content.startswith("⊘ Asked for ")), renderer=renderer, **audio)
+        if not (asked and content.startswith("⊘ Asked for ")):
+            if peer not in self.stumps:
+                self.notify("person")
+            else:
+                from . import stump as _stump
+                items = _stump.parse_message(content, lxm.title_as_string() if lxm.title else "")
+                if any(it["kind"] == "dm" for it in items) or audio:
+                    self.notify("dm")
+                elif (lxm.title_as_string() if lxm.title else "").startswith("#"):
+                    self.notify("room")                # (an answer to our own command: no sound)
         title0 = lxm.title_as_string() if lxm.title else ""
         if peer not in self.stumps and stump.looks_like_stump(content, title0):
             self._on_stump_signal(peer)

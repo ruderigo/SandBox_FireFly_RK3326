@@ -31,6 +31,7 @@ KEY_MAP = {
 class App:
     def __init__(self, core, fullscreen=False, size=(720, 720), display=None, rotate_override=None):
         self.core = core
+        self._started_at = time.time()  # (no message sound for what arrives as it starts)
         os.environ.setdefault("SDL_VIDEO_CENTERED", "1")
         # Only the subsystems we need: no audio device is opened.
         pygame.display.init()
@@ -272,15 +273,15 @@ class App:
         hints = self.current.hints
         fs = f.mono_small
         # Every hint on the line: closer together when they wouldn't fit.
-        gap = 12
-        for gap in (12, 8, 5):
-            if 10 + sum(fs.size(b)[0] + 14 + fs.size(l)[0] + gap for b, l in hints) <= W:
+        gap, pad, after = 12, 10, 4
+        for gap, pad, after in ((12, 10, 4), (8, 10, 4), (5, 8, 3), (3, 6, 2)):
+            if 10 + sum(fs.size(b)[0] + pad + after + fs.size(l)[0] + gap for b, l in hints) <= W:
                 break
         for btn, label in hints:
-            w = fs.size(btn)[0] + 10
+            w = fs.size(btn)[0] + pad
             D.box(surf, pygame.Rect(x, y, w, f.line - 2), T.BORDER, 4)
-            D.text(surf, fs, btn, (x + 5, y + 1), T.TEXT)
-            x += w + 4
+            D.text(surf, fs, btn, (x + pad // 2, y + 1), T.TEXT)
+            x += w + after
             x += D.text(surf, fs, label, (x, y + 1), T.MUTED) + gap
             if x > W - 40:
                 break
@@ -320,6 +321,12 @@ class App:
             self._activity = False
             self.events()
             self.player.pump()
+            # The message sound: when a message arrived that deserves it (core.notify),
+            # at most one every 2 s, not at start-up for the backlog.
+            due = getattr(self.core, "chime_due", 0)
+            if due and due > getattr(self, "_chimed", 0) + 2 and time.time() - self._started_at > 5:
+                self._chimed = due
+                self.player.chime()
             if self.player.error:
                 self.toast(self.player.error, 6)
                 self.player.error = None

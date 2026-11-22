@@ -1329,11 +1329,14 @@ class SettingsTab(ListScreen):
              f"{s['sync_interval_min']} min" if s["sync_interval_min"] else "manual"),
             ("head", "PRIVACY", None),
             ("blocked", "Blocked", f"{len(self.app.core.store.blocked())}"),
+            ("head", "SOUND", None),
+            ("audioout", "Plays on", _audio_out()),
+            ("audioin", "Records from", _audio_in()),
+            ("msgsound", "Message sound", {"people": "people and DMs", "all": "everything (rooms too)",
+                                           "off": "off"}.get(s.get("message_sound", "people"), "people and DMs")),
             ("head", "VOICE NOTES", None),
             ("voicesd", "Copy to SD card (as WAV)", "on" if s.get("voice_to_sd", True) else "off"),
             ("voicesdnow", "Copy all now", ""),
-            ("audioout", "Plays on", _audio_out()),
-            ("audioin", "Records from", _audio_in()),
             ("voicesend", "Send as", {"auto": "Opus, best that fits", "opus": "Opus, best that fits",
                                       "codec2": "Codec 2 1200 (smallest)"}.get(s.get("voice_send", "auto"), "auto")),
             ("head", "SCREEN", None),
@@ -1403,6 +1406,10 @@ class SettingsTab(ListScreen):
             s["propagation_mode"] = _step(["auto", "manual", "off"], s["propagation_mode"], d); self._net()
         elif key == "voicesend":
             s["voice_send"] = _step(["auto", "codec2"], s.get("voice_send", "auto") if s.get("voice_send") != "opus" else "auto", d); s.save()
+        elif key == "msgsound":
+            s["message_sound"] = _step(["people", "all", "off"], s.get("message_sound", "people"), d); s.save()
+            if s["message_sound"] != "off":
+                self.app.player.chime()                    # hear it
         elif key == "rotation":
             self.app.set_rotation(_step(["auto", 0, 90, 180, 270], s.get("screen_rotation", "auto"), d))
 
@@ -1484,6 +1491,10 @@ class SettingsTab(ListScreen):
             app.push(Menu(app, "TCP peers", items))
         elif key == "voicesend":
             s["voice_send"] = _step(["auto", "codec2"], s.get("voice_send", "auto") if s.get("voice_send") != "opus" else "auto", 1); s.save()
+        elif key == "msgsound":
+            s["message_sound"] = _step(["people", "all", "off"], s.get("message_sound", "people"), 1); s.save()
+            if s["message_sound"] != "off":
+                self.app.player.chime()
         elif key == "pmode":
             nodes = core.store.peers("propagation")
             items = [("Auto (nearest heard)", lambda: self._set_pn("auto", None)),
