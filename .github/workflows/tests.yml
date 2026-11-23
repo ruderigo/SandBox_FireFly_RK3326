@@ -43,6 +43,10 @@ jobs:
       - name: Layout at every supported screen geometry
         run: python tests/devices.py "$RUNNER_TEMP/devshots"
 
+      - name: The version (ends in -b.<Stump build>, readable as text, CHANGELOG's top)
+        timeout-minutes: 1
+        run: python tests/run_version.py
+
       - name: Chat selector (voice notes, details, new arrivals)
         timeout-minutes: 2
         run: python tests/run_chat_selector.py

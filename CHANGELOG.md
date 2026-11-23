@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.16-b.88 (sandbox)
+- **The version says which Stump it was tested with**, as the handheld's
+  Stump does (2.7.5-b.88): 0.9.16-b.88 is FireFly 0.9.16, tested with Stump
+  1.0.0-beta.88. Start-up, *About*, the release (`v0.9.16-b.88`,
+  `FireFly-RK3326-0.9.16-b.88.zip`) and the app manager all show it. Before
+  this, the build was a separate number ("0.9.15 build 88"). Nothing else
+  changes.
+- **Release notes:** a release's notes were empty (the workflow looked for
+  `## 0.9.15` and the heading reads `## 0.9.15 (sandbox)`); now they're this
+  file's section again.
+
 ## 0.9.15 (sandbox)
 Build 88 (Stump 1.0.0-beta.88).
 - **Tested with Stump 1.0.0-beta.88**: start-up and *About* now say so (was
