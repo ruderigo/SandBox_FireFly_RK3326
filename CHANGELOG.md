@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.15 (sandbox)
+Build 88 (Stump 1.0.0-beta.88).
+- **Tested with Stump 1.0.0-beta.88**: start-up and *About* now say so (was
+  beta.86). Nothing else changes. Beta.88 stamps a board's message times
+  in Unix time; FireFly already took a time before 2024 as unknown and
+  used when the line arrived (0.9.13), so a board that hasn't learnt the
+  time yet (its lines read early 2000) still sorts and reads right. Beta.87 (Stump OS on a Raspberry Pi) changes nothing for
+  FireFly: a Pi Stump is reached like any other, by its Wi-Fi or the mesh.
+
 ## 0.9.14 (sandbox)
 Build 86 (Stump 1.0.0-beta.86).
 - **A message sound.** FireFly made no sound when a message arrived. Now
