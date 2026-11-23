@@ -41,7 +41,7 @@ jobs:
       - name: Release notes from CHANGELOG.md
         run: |
           V="${{ steps.v.outputs.version }}"
-          awk -v v="## $V" '$0==v{on=1;next} /^## /{on=0} on' CHANGELOG.md > notes.md
+          awk -v v="## $V" '$0==v || index($0, v" ")==1 {on=1;next} /^## /{on=0} on' CHANGELOG.md > notes.md   # "## 0.9.15 (sandbox)" too
           printf '\n**Install:** download `FireFly-RK3326-%s.zip` below and follow [INSTALL.md](%s/%s/blob/main/INSTALL.md).\n' \
             "$V" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" >> notes.md
           cat notes.md
