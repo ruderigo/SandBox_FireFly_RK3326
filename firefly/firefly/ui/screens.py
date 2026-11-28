@@ -1165,6 +1165,20 @@ class NetworkTab(Screen):
             out.append(("m", "Making this address's announce stamp (once): others can reach you when it's done."))
         if getattr(core, "radio_json_note", ""):
             out.append(("m", core.radio_json_note))
+        # The radio, while it isn't an interface yet (nothing plugged in, searching, refused,
+        # switched off): a note here says why. Once up it is a row below, with its details.
+        rs = core.radio.status if core.radio else None
+        if rs and rs.state not in ("online", "shared"):
+            label = {"connecting": "connecting…", "searching": "searching…", "no devices": "no radio plugged in",
+                     "refused": "the RNode refused", "off": "switched off"}.get(rs.state, rs.state)
+            where = f" on {rs.port}" if rs.port else ""
+            out.append(("err" if rs.state == "refused" else "m",
+                        f"LoRa radio: {label}{where}" + (f"  ({rs.board})" if rs.board else "")))
+            if rs.detail:
+                out.append(("m", rs.detail))
+        reg = core.settings.get("radio_region") or {}
+        if reg.get("source") == "none" and reg.get("frequency") == core.settings["radio"]["frequency"]:
+            out.append(("m", region.describe(reg)))       # nothing said where we are: check the local rules
         # Each interface as two lines (proposal-interface-names v2): a plain label, then the
         # interface as rnstatus prints it. The rows rnstatus hides are not shown. Notes about
         # problems stay up here, above the list; a row says Up or Down and nothing more.
@@ -1192,8 +1206,13 @@ class NetworkTab(Screen):
                     continue          # boards without a battery report 0
                 if isinstance(v, (int, float)):
                     radio.append(f"{label} {fmt.format(v)}")
-            if radio:
-                out.append(("m", "   " + "  ".join(radio)))
+            for n in range(0, len(radio), 3):       # three to a line: a label never leaves its value
+                out.append(("m", "   " + "  ".join(radio[n:n + 3])))
+            if name.startswith("RNodeInterface[") and rs and rs.state == "online":
+                # What the LORA RADIO section used to say, now with the radio's row.
+                if rs.port:
+                    out.append(("m", f"   on {rs.port}" + (f"  ({rs.board})" if rs.board else "")))
+                out.append(("m", "   " + _radio_summary(core.settings["radio"], state=False)))
         if not shown:
             out.append(("m", "No interface statistics available."))
         out += [("", ""), ("h", "LOCAL NETWORK (as set in EmulationStation)")]
@@ -1225,21 +1244,6 @@ class NetworkTab(Screen):
             out += [("", ""), ("h", "VOICE NOTES ON THE SD CARD"), ("m", folder)]
             if err:
                 out.append(("err", err))
-        out += [("", ""), ("h", "LORA RADIO")]
-        rs = core.radio.status if core.radio else None
-        if rs:
-            label = {"online": "● online", "connecting": "… connecting", "searching": "○ searching",
-                     "no devices": "○ no radio plugged in", "refused": "✗ RNode refused",
-                     "off": "○ switched off", "shared": "managed by rnsd"}.get(rs.state, rs.state)
-            where = f" on {rs.port}" if rs.port else ""
-            kind = "ok" if rs.state == "online" else ("err" if rs.state == "refused" else "m")
-            out.append((kind, label + where + (f"  ({rs.board})" if rs.board else "")))
-            if rs.detail:
-                out.append(("m", rs.detail))
-        out.append(("m", _radio_summary(core.settings["radio"])))
-        reg = core.settings.get("radio_region") or {}
-        if reg.get("source") == "none" and reg.get("frequency") == core.settings["radio"]["frequency"]:
-            out.append(("m", region.describe(reg)))       # nothing said where we are: check the local rules
         return out
 
     def draw(self, surf, f):
@@ -1303,9 +1307,9 @@ def _region_label(s, full=False):
     return f"{d['frequency'] / 1e6:g} MHz · {how}"
 
 
-def _radio_summary(r):
-    state = "on" if r["enabled"] else "off"
-    return (f"LoRa {state}: {r['frequency'] / 1e6:.3f} MHz  BW {r['bandwidth'] / 1000:g} kHz  "
+def _radio_summary(r, state=True):
+    head = f"LoRa {'on' if r['enabled'] else 'off'}: " if state else ""
+    return (f"{head}{r['frequency'] / 1e6:.3f} MHz  BW {r['bandwidth'] / 1000:g} kHz  "
             f"SF{r['spreading_factor']}  CR 4/{r['coding_rate']}  {r['tx_power']} dBm"
             + ("  + passphrase" if r.get("ifac_passphrase") or r.get("ifac_netname") else ""))
 

@@ -17,6 +17,12 @@ Build 88 (Stump 1.0.0-beta.88).
   start, so nothing of the old names stays.
 - **The rows `rnstatus` hides are hidden here too**: one per neighbour on the
   local network, one per program using the shared instance.
+- **The LORA RADIO section at the bottom of NETWORK is gone**: it repeated
+  the radio's row. Where the radio is plugged in, its board and its
+  settings (frequency, bandwidth, SF, CR, power) are now under the radio's
+  row; while there is no radio row (nothing plugged in, searching, refused,
+  switched off) a note above the list says why. The radio's readings are
+  three to a line, so a label never wraps away from its value.
 - **Notes about problems sit above the list** ("LoRa radio not responding"
   with Reticulum's reason was inside it).
 - **The radio's default frequency follows where the handheld is.** On a
