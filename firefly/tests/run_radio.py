@@ -88,6 +88,20 @@ check(slow.ignored > 0, "  ...and it really was still booting when first asked")
 
 core.settings["radio"]["enabled"] = False; core.radio.request_apply(delay=0)
 check(wait(lambda: core.radio.status.state == RS.OFF, 10), "radio can be switched off live")
+
+# An RNode that answers but whose interface fails while Reticulum finishes it: Reticulum has
+# registered it by then. Each failed try used to leave a "LoRa radio, Down" row for good.
+import RNS
+from firefly.radio import FireFlyRNode
+def rnode_rows(): return [str(i) for i in RNS.Transport.interfaces if str(i).startswith("RNodeInterface[")]
+check(not rnode_rows(), "  (no radio row while it is off)")
+_real = FireFlyRNode.final_init
+def _fails(self): raise OSError(5, "Input/output error")
+FireFlyRNode.final_init = _fails
+r = core.radio
+tried = [r._try(slow.port, r._params()) for _ in range(2)]
+FireFlyRNode.final_init = _real
+check(tried == [False, False] and not rnode_rows(), "an RNode that fails while starting leaves no stray row")
 core.stop()
 print("ALL PASSED" if ok else "SOME FAILED")
 sys.stdout.flush(); os._exit(0 if ok else 1)

@@ -213,6 +213,12 @@ class RadioManager:
                                                    ifac_netkey=passphrase or None)
             except Exception as e:
                 RNS.log(f"Could not register RNode interface: {e}", RNS.LOG_ERROR)
+                # Reticulum registers the interface before finishing it: when finishing fails,
+                # take it back out, or it stays listed as a second "LoRa radio", Down, for good.
+                try:
+                    RNS.Transport.remove_interface(iface)
+                except Exception:
+                    pass
                 _quiet_detach(iface)
                 return False
             with self.lock:
