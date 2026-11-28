@@ -182,7 +182,7 @@ instance and use its settings instead of its own.
    apply by themselves within a couple of seconds. If a technician gave you
    a `radio.json`, see [Radio settings from a technician](#radio-settings-from-a-technician-radiojson).
 3. **NETWORK**: under INTERFACES you should see **● LoRa radio  Up**, and under it
-   `RNodeInterface[RNode]`, its port and the board's chip and firmware. Press A to announce yourself.
+   `RNodeInterface[RNode]`. Press A to announce yourself.
 4. **PEERS**: people appear as they announce. A opens a chat.
 
 To quit, press **Select + Start**.
@@ -373,9 +373,9 @@ sync
 | Picture sideways or upside down | Press **Select + R1** until it's upright (saved automatically). |
 | Black screen, no orange start screen | Paste `launch.log` into an issue: it shows the video driver and where startup stopped. |
 | Start screen shows an error | The last lines of the error are on screen; the full trace is in `launch.log`. |
-| NETWORK says **LoRa radio: no radio plugged in** | The handheld sees no USB serial device: check the cable and hub, and `ls /dev/ttyUSB* /dev/ttyACM*`. |
-| NETWORK says **LoRa radio: searching…** | Devices are there but none answers as an RNode: flash RNode firmware (section 2). NETWORK → Y → *Search for RNodes now* retries at once. |
-| NETWORK says **LoRa radio: the RNode refused** | The line below says why: a frequency outside the board's band, a TX power above its limit, or firmware too old (update with `rnodeconf`). Change the setting and it retries by itself. |
+| NETWORK shows **no LoRa radio row**, nothing plugged in | The handheld sees no USB serial device: check the cable and hub, and `ls /dev/ttyUSB* /dev/ttyACM*`. |
+| NETWORK shows **no LoRa radio row**, a board is plugged in | Devices are there but none answers as an RNode: flash RNode firmware (section 2). NETWORK → Y → *Search for RNodes now* retries at once. |
+| NETWORK shows **no LoRa radio row**, the board has RNode firmware | The RNode refused the settings: a frequency outside the board's band, a TX power above its limit, or firmware too old (update with `rnodeconf`). Change the setting and it retries by itself. |
 | `Permission denied` on the serial port | Reboot after installing (the `dialout` group needs a new login). |
 | Nobody appears in PEERS | Radio settings must match the other nodes exactly: frequency, bandwidth, spreading factor, coding rate. |
 | NETWORK says "No network" | Join a Wi-Fi network in EmulationStation's settings (FireFly never does it). FireFly picks it up within a few seconds, no restart. |
