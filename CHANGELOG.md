@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.9.16 (sandbox)
+Build 88 (Stump 1.0.0-beta.88).
+- **Interfaces shown the same way as on FireFly Android and the Stump**
+  (proposal-interface-names v2). On NETWORK each interface is two lines: a
+  plain label (*Local network*, *LoRa radio*, *TCP*, *Shared instance*) with
+  Up or Down, then the interface exactly as `rnstatus` prints it, the line
+  to quote to someone else. Under it, in `rnstatus`'s words: *Mode* (only
+  when it isn't Full), *Peers: N reachable*, *Serving: N programs*,
+  *Traffic: ↑sent ↓received*.
+- **New names.** The local network is `Local network` (was `Local network
+  (AutoInterface)`), the radio `RNode` (was `RNode LoRa`), TCP links `TCP`,
+  `TCP 2`… (were `TCP peer 1`…). So `rnstatus` now reads
+  `AutoInterface[Local network]`, `RNodeInterface[RNode]`,
+  `TCPInterface[TCP/host:4242]`. The Reticulum config is written again at
+  start, so nothing of the old names stays.
+- **The rows `rnstatus` hides are hidden here too**: one per neighbour on the
+  local network, one per program using the shared instance.
+- **Notes about problems sit above the list** ("LoRa radio not responding"
+  with Reticulum's reason was inside it).
+- **The radio's default frequency follows where the handheld is.** On a
+  first start FireFly reads the time zone: 915 MHz in the United States,
+  Canada and Mexico, 868 MHz in Europe. A time zone that is unset, UTC or
+  elsewhere decides nothing: the default stays 915 MHz and NETWORK says to
+  check the local rules. SETUP → LORA RADIO → *Region default* shows how it
+  was picked and lets you choose North America, Europe, or the time zone
+  again; *Load Stump defaults* uses the region's frequency. **A frequency
+  already in use is never changed**: updating from 0.9.15 keeps yours.
+- SETUP says *TCP peers* (was *Internet/TCP peers*): a TCP link can run over
+  a home network or a VPN as well as the internet.
+- Test: `tests/run_interface_names.py`.
+
 ## 0.9.15 (sandbox)
 Build 88 (Stump 1.0.0-beta.88).
 - **Tested with Stump 1.0.0-beta.88**: start-up and *About* now say so (was

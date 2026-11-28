@@ -37,6 +37,10 @@ jobs:
           sudo apt-get install -y -qq opus-tools codec2
           pip install "rns==1.6.1" "lxmf==1.3.1" "pygame>=2" pyserial cryptography
 
+      - name: Interface names, hidden rows and the region default (proposal v2)
+        timeout-minutes: 2
+        run: python tests/run_interface_names.py
+
       - name: UI smoke test (6000 random button presses)
         run: python tests/ui_smoke.py
 

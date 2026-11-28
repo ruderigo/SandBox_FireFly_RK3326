@@ -12,6 +12,7 @@ import time
 import RNS
 from RNS.Interfaces.RNodeInterface import KISS, RNodeInterface
 
+from . import ifaces
 from .rnsconfig import serial_ports
 
 APPLY_DELAY_S = 1.5        # wait for the user to finish changing settings
@@ -194,7 +195,7 @@ class RadioManager:
     def _try(self, port, params, prefer=False):
         freq, bw, txp, sf, cr, netname, passphrase = params
         self.status.set(RadioStatus.CONNECTING, port=port, detail="asking the device if it is an RNode")
-        cfg = {"name": "RNode LoRa", "port": port, "frequency": freq, "bandwidth": bw, "txpower": txp,
+        cfg = {"name": ifaces.RNODE, "port": port, "frequency": freq, "bandwidth": bw, "txpower": txp,
                "spreadingfactor": sf, "codingrate": cr}
         iface = None
         try:

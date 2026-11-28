@@ -11,7 +11,7 @@ reads the state, and follows it while it runs:
   Reticulum on its own only adopts the networks present when it starts.
 * Stumps on the same network answer the `STUMP?` question on UDP 4244 with
   their name, LXMF address and web address; FireFly lists them.
-* Internet peers (SETUP -> Internet/TCP peers) reconnect by themselves once
+* TCP peers (SETUP -> TCP peers) reconnect by themselves once
   there is a route out; NETWORK shows whether there is one.
 """
 import json
@@ -27,7 +27,7 @@ POLL_S = 5.0
 STUMP_PORT = 4244
 STUMP_SCAN_S = 60.0
 STUMP_WAIT_S = 1.5
-AUTO_NAME = "Local network (AutoInterface)"
+from .ifaces import LOCAL_NETWORK as AUTO_NAME    # Reticulum prints AutoInterface[Local network]
 
 # Never a LAN: loopback and the virtual interfaces of containers, VPNs and tunnels.
 _IGNORED = ("lo", "dummy", "docker", "veth", "br-", "virbr", "tun", "tap", "ifb", "sit", "ip6", "wg", "p2p")
