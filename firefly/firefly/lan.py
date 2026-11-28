@@ -237,11 +237,17 @@ class LanManager:
     # ---------------------------------------------------------------- AutoInterface
     def _attach(self, names):
         from RNS.Interfaces.AutoInterface import AutoInterface
+        iface = None
         try:
             iface = AutoInterface(RNS.Transport, {"name": AUTO_NAME})
             self.core.reticulum._add_interface(iface)
         except Exception as e:
             RNS.log(f"Local network discovery could not start: {e}", RNS.LOG_WARNING)
+            # Reticulum registers the interface before finishing it: when finishing fails (a
+            # network that just came or went), take it back out, or it stays listed as a
+            # second "Local network", Down, for good.
+            if iface is not None:
+                self._discard(iface)
             return
         self.auto, self.adopted = iface, names
         # Reticulum finishes an AutoInterface after registering it; that waits for peering.
@@ -257,8 +263,12 @@ class LanManager:
 
     def _detach(self):
         iface, self.auto, self.adopted = self.auto, None, frozenset()
-        if iface is None:
-            return
+        if iface is not None:
+            self._discard(iface)
+
+    @staticmethod
+    def _discard(iface):
+        """Shut an AutoInterface down and take it, and what it spawned, out of Reticulum."""
         for peer in list(getattr(iface, "spawned_interfaces", {}).values()):
             try:
                 peer.detach()

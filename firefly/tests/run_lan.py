@@ -96,6 +96,18 @@ check(m2.auto is not None and m2.auto in __import__("RNS").Transport.interfaces,
 m2._detach()
 check(m2.auto is None and all(getattr(i, "name", "") != lan.AUTO_NAME or i.detached for i in __import__("RNS").Transport.interfaces),
       "removed again cleanly")
+
+print("a Local network link that fails while starting leaves no stray row")
+from RNS.Interfaces.AutoInterface import AutoInterface as _Auto
+_real = _Auto.final_init
+def _fails(self): raise OSError(99, "Cannot assign requested address")
+_Auto.final_init = _fails
+m3 = lan.LanManager(core, lister=lambda: {"ifaces": [], "internet": None}, stump_finder=lambda t: {})
+for _ in range(2):
+    m3._attach(frozenset({"eth0"}))
+_Auto.final_init = _real
+strays = [str(i) for i in __import__("RNS").Transport.interfaces if getattr(i, "name", "") == lan.AUTO_NAME]
+check(m3.auto is None and not strays, "nothing is left in Reticulum's interface list")
 core.stop()
 print("ALL PASSED" if ok else "SOME FAILED")
 sys.stdout.flush(); os._exit(0 if ok else 1)

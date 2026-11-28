@@ -21,6 +21,11 @@ Build 88 (Stump 1.0.0-beta.88).
   row under INTERFACES says it. The radio's settings are in SETUP. The
   radio's readings are three to a line, so a label never wraps away from
   its value.
+- **No more stray "Local network, Down" rows.** When the network came or went
+  (a Wi-Fi dongle unplugged, a cable tried), a Local network link that
+  failed while starting stayed in Reticulum's list for good, one more for
+  each failed try; `rnstatus` showed them too. A link that fails to start
+  is now taken back out. This was there before 0.9.16.
 - NETWORK and its messages say *the OS* where they said *EmulationStation*:
   the network is set in whatever system the handheld runs.
 - **Notes about problems sit above the list** ("LoRa radio not responding"
