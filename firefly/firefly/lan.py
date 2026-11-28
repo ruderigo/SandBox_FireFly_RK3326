@@ -276,10 +276,10 @@ class LanManager:
 
     # ---------------------------------------------------------------- for the screen
     def summary(self):
-        """Lines for NETWORK: what the handheld is on, as EmulationStation set it."""
+        """Lines for NETWORK: what the handheld is on, as the OS set it."""
         st = self.state
         if not st["ifaces"]:
-            return ["No network: join Wi-Fi in EmulationStation's settings (or plug in a cable).",
+            return ["No network: join Wi-Fi in the OS settings (or plug in a cable).",
                     "FireFly keeps working over LoRa."]
         out = []
         for i in st["ifaces"]:

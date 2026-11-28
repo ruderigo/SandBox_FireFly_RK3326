@@ -23,6 +23,8 @@ Build 88 (Stump 1.0.0-beta.88).
   row; while there is no radio row (nothing plugged in, searching, refused,
   switched off) a note above the list says why. The radio's readings are
   three to a line, so a label never wraps away from its value.
+- NETWORK and its messages say *the OS* where they said *EmulationStation*:
+  the network is set in whatever system the handheld runs.
 - **Notes about problems sit above the list** ("LoRa radio not responding"
   with Reticulum's reason was inside it).
 - **The radio's default frequency follows where the handheld is.** On a

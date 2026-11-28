@@ -59,7 +59,7 @@ m._detach = lambda: (setattr(m, "auto", None), setattr(m, "adopted", frozenset()
 core.on_interface_online = lambda: onlines.append(time.time())
 core.lan = m
 m._tick()
-check(m.auto is None and m.summary()[0].startswith("No network"), "no network: says to join one in EmulationStation")
+check(m.auto is None and m.summary()[0].startswith("No network"), "no network: says to join one in the OS settings")
 net = {"ifaces": [{"name": "wlan0", "ipv4": "192.168.0.167", "broadcast": "192.168.0.255", "link_local": True,
                    "wifi": True, "up": True, "ssid": "Maison"}], "internet": "wlan0"}
 m._tick()

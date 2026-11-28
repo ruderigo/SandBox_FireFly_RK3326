@@ -1215,7 +1215,7 @@ class NetworkTab(Screen):
                 out.append(("m", "   " + _radio_summary(core.settings["radio"], state=False)))
         if not shown:
             out.append(("m", "No interface statistics available."))
-        out += [("", ""), ("h", "LOCAL NETWORK (as set in EmulationStation)")]
+        out += [("", ""), ("h", "LOCAL NETWORK (as set in the OS)")]
         lan = getattr(core, "lan", None)
         if lan is not None:
             for ln in lan.summary():
