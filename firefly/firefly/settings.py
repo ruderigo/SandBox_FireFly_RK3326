@@ -4,8 +4,11 @@ import json
 import os
 import tempfile
 
+from . import region
+
 # The provisioner defaults of the Stump network. Radio settings MUST match the
 # other nodes exactly: a mismatched radio doesn't error, it just hears nothing.
+# The frequency here is North America's; Europe's default is 868 MHz (region.py).
 STUMP_RADIO = {
     "frequency": 915_000_000,
     "bandwidth": 125_000,
@@ -20,6 +23,7 @@ DEFAULTS = {
     "display_name": "R36 Operator",
     "announce_interval_min": 30,     # Stump needs < 60 to keep you DM-reachable
     "radio": dict(enabled=True, port="auto", ifac_netname="", ifac_passphrase="", **STUMP_RADIO),
+    "radio_region": None,            # how the default frequency was picked (region.py); None: not yet
     "radio_json_imported": None,     # SHA-256 of the last radio.json applied (see radiojson.py)
     "auto_interface": True,          # zero-conf discovery on Wi-Fi / Ethernet
     "tcp_peers": [],                 # ["host:port", ...] internet or LAN entrypoints
@@ -70,6 +74,9 @@ class Settings:
             with open(self.path, "r", encoding="utf-8") as f:
                 self.data = _merge(DEFAULTS, json.load(f))
         except FileNotFoundError:
+            # A first start: the radio's default frequency follows where the handheld is
+            # (its time zone): 915 MHz in North America, 868 MHz in Europe, else 915.
+            self.apply_region(region.decide(timezone=region.system_timezone()), save=False)
             self.save()
         except (ValueError, OSError):
             # Keep a copy of the broken file and start from defaults.
@@ -83,6 +90,10 @@ class Settings:
         if self.data.get("sync_interval_min") == 60 and not self.data.get("sync_default_v2"):
             self.data["sync_interval_min"] = 30
         self.data["sync_default_v2"] = True
+        if self.data.get("radio_region") is None:
+            # Settings from before the region default: the frequency in use is never changed.
+            self.data["radio_region"] = {"region": None, "source": "kept", "from": "",
+                                         "frequency": self.data["radio"].get("frequency")}
         try:
             self.validate()
         except (TypeError, ValueError, KeyError):
@@ -90,6 +101,19 @@ class Settings:
             self.data["radio"] = copy.deepcopy(DEFAULTS["radio"])
             self.validate()
             self.save()
+
+    def apply_region(self, decision, save=True):
+        """Set the radio's frequency from a region decision (region.decide) and remember how
+        it was picked. Only ever called for a first start, or when the person asks."""
+        self.data["radio"]["frequency"] = int(decision["frequency"])
+        self.data["radio_region"] = dict(decision)
+        if save:
+            self.save()
+
+    def stump_defaults(self):
+        """The Stump network's radio defaults, on this region's frequency."""
+        reg = (self.data.get("radio_region") or {}).get("region")
+        return dict(STUMP_RADIO, frequency=region.FREQ.get(reg, region.FREQ[region.FALLBACK]))
 
     def validate(self):
         r = self.data["radio"]

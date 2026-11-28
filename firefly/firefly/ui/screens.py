@@ -11,7 +11,8 @@ from .widgets import Compose, Info, Menu, NumberEditor, QrScreen, Screen
 from .. import stump
 from ..rnsconfig import serial_ports
 from .. import __version__, BUILD, STUMP_RELEASE
-from ..settings import BANDWIDTHS, STUMP_RADIO
+from ..settings import BANDWIDTHS
+from .. import ifaces, region
 
 STATE_MARK = {
     "pending": ("…", T.MUTED), "stamping": ("⚙", T.MUTED), "sending": ("↑", T.MUTED),
@@ -1164,19 +1165,26 @@ class NetworkTab(Screen):
             out.append(("m", "Making this address's announce stamp (once): others can reach you when it's done."))
         if getattr(core, "radio_json_note", ""):
             out.append(("m", core.radio_json_note))
-        for i in self._stats.get("interfaces", []):
+        reg = core.settings.get("radio_region") or {}
+        if reg.get("source") == "none" and reg.get("frequency") == core.settings["radio"]["frequency"]:
+            out.append(("m", region.describe(reg)))       # nothing said where we are: check the local rules
+        # Each interface as two lines (proposal-interface-names v2): a plain label, then the
+        # interface as rnstatus prints it. The rows rnstatus hides are not shown. Notes about
+        # problems stay up here, above the list; a row says Up or Down and nothing more.
+        shown = [i for i in self._stats.get("interfaces", []) if not ifaces.hidden(i)]
+        if core.shared_instance and any(not i.get("status") and str(i.get("name", "")).startswith("RNode")
+                                        for i in shown):
+            out.append(("err", "LoRa radio not responding."))
+            reason = _last_rnode_error(core.paths.rns_config_dir + "/logfile")
+            if reason:
+                out.append(("m", "Reticulum says: " + reason))
+        for i in shown:
             up = i.get("status")
-            if not up and "RNode" in i.get("name", "") and core.shared_instance:
-                out.append(("err", "LoRa radio not responding."))
-                reason = _last_rnode_error(core.paths.rns_config_dir + "/logfile")
-                if reason:
-                    out.append(("m", "Reticulum says: " + reason))
-            name = i.get("short_name") or i.get("name", "?")
-            out.append(("ok" if up else "err", f"{'●' if up else '○'} {name}"))
-            det = f"   rx {_bytes(i.get('rxb', 0))}  tx {_bytes(i.get('txb', 0))}"
-            if i.get("clients") is not None:
-                det += f"  peers {i['clients']}"
-            out.append(("m", det))
+            name = str(i.get("name", "?"))
+            out.append(("ok" if up else "err", f"{'●' if up else '○'} {ifaces.label(name)}  {'Up' if up else 'Down'}"))
+            out.append(("m", "   " + name))
+            for line in ifaces.fields(i):
+                out.append(("m", "   " + line))
             radio = []
             for key, label, fmt in (("rssi", "RSSI", "{:.0f} dBm"), ("snr", "SNR", "{:.1f} dB"),
                                     ("noise_floor", "noise", "{:.0f} dBm"),
@@ -1187,11 +1195,11 @@ class NetworkTab(Screen):
                     continue          # boards without a battery report 0
                 if isinstance(v, (int, float)):
                     radio.append(f"{label} {fmt.format(v)}")
-            if radio:
-                out.append(("m", "   " + "  ".join(radio)))
-        if not self._stats.get("interfaces"):
+            for n in range(0, len(radio), 3):       # three to a line: a label never leaves its value
+                out.append(("m", "   " + "  ".join(radio[n:n + 3])))
+        if not shown:
             out.append(("m", "No interface statistics available."))
-        out += [("", ""), ("h", "LOCAL NETWORK (as set in EmulationStation)")]
+        out += [("", ""), ("h", "LOCAL NETWORK (as set in the OS)")]
         lan = getattr(core, "lan", None)
         if lan is not None:
             for ln in lan.summary():
@@ -1220,18 +1228,6 @@ class NetworkTab(Screen):
             out += [("", ""), ("h", "VOICE NOTES ON THE SD CARD"), ("m", folder)]
             if err:
                 out.append(("err", err))
-        out += [("", ""), ("h", "LORA RADIO")]
-        rs = core.radio.status if core.radio else None
-        if rs:
-            label = {"online": "● online", "connecting": "… connecting", "searching": "○ searching",
-                     "no devices": "○ no radio plugged in", "refused": "✗ RNode refused",
-                     "off": "○ switched off", "shared": "managed by rnsd"}.get(rs.state, rs.state)
-            where = f" on {rs.port}" if rs.port else ""
-            kind = "ok" if rs.state == "online" else ("err" if rs.state == "refused" else "m")
-            out.append((kind, label + where + (f"  ({rs.board})" if rs.board else "")))
-            if rs.detail:
-                out.append(("m", rs.detail))
-        out.append(("m", _radio_summary(core.settings["radio"])))
         return out
 
     def draw(self, surf, f):
@@ -1281,11 +1277,18 @@ def _bytes(n):
     return f"{n:.1f} TB"
 
 
-def _radio_summary(r):
-    state = "on" if r["enabled"] else "off"
-    return (f"LoRa {state}: {r['frequency'] / 1e6:.3f} MHz  BW {r['bandwidth'] / 1000:g} kHz  "
-            f"SF{r['spreading_factor']}  CR 4/{r['coding_rate']}  {r['tx_power']} dBm"
-            + ("  + passphrase" if r.get("ifac_passphrase") or r.get("ifac_netname") else ""))
+def _region_label(s, full=False):
+    """How the default frequency was picked. Short for the SETUP row; in full for the menu
+    and NETWORK. Says 'set by hand' once the frequency differs from it."""
+    d = s.get("radio_region") or {}
+    if d.get("source") == "kept":
+        return "frequency kept as it was" if full else "not used"
+    if d.get("frequency") != s["radio"]["frequency"]:
+        return "frequency set by hand" if full else "set by hand"
+    if full:
+        return region.describe(d)
+    how = {"timezone": "time zone", "country": "country", "chosen": "chosen"}.get(d.get("source"), "check local rules")
+    return f"{d['frequency'] / 1e6:g} MHz · {how}"
 
 
 # ======================================================================== SETUP
@@ -1309,7 +1312,8 @@ class SettingsTab(ListScreen):
             ("radio_on", "Radio", "on" if r["enabled"] else "off"),
             ("port", "Which RNode", "any (auto)" if r["port"] == "auto" else r["port"]),
             ("rhosts", "Wi-Fi RNodes", f"{len(s.get('rnode_hosts', []))} configured"),
-            ("preset", "Load Stump defaults", "915/125k/SF8"),
+            ("region", "Region default", _region_label(s)),
+            ("preset", "Load Stump defaults", f"{s.stump_defaults()['frequency'] / 1e6:g}/125k/SF8"),
             ("freq", "Frequency", f"{r['frequency'] / 1e6:.3f} MHz"),
             ("bw", "Bandwidth", f"{r['bandwidth'] / 1000:g} kHz"),
             ("sf", "Spreading factor", f"SF{r['spreading_factor']}"),
@@ -1320,7 +1324,7 @@ class SettingsTab(ListScreen):
             ("head", "OTHER LINKS", None),
             ("auto", "Local network discovery", "on" if s["auto_interface"] else "off"),
             ("stumpwifi", "Chat with Stumps over Wi-Fi", "on" if s.get("stump_wifi", True) else "off"),
-            ("tcp", "Internet/TCP peers", f"{len(s['tcp_peers'])} configured"),
+            ("tcp", "TCP peers", f"{len(s['tcp_peers'])} configured"),
             ("transport", "Relay for others (transport)", "on" if s["transport"] else "off"),
             ("head", "OFFLINE DELIVERY", None),
             ("pmode", "Propagation node", s["propagation_mode"] + (f" ({pn[:8]})" if pn else "")),
@@ -1448,8 +1452,21 @@ class SettingsTab(ListScreen):
                      for b in rows]
             app.push(Menu(app, "Blocked", items, subtitle="Their messages and announces are ignored until unblocked"))
         elif key == "preset":
-            r.update(STUMP_RADIO); self._radio()
+            r.update(s.stump_defaults()); self._radio()
             app.toast("Stump network defaults loaded")
+        elif key == "region":
+            tz = region.system_timezone()
+            auto = region.decide(timezone=tz)
+            def pick(d):
+                s.apply_region(d, save=False); self._radio()
+                app.toast("Frequency: " + region.describe(d), 4)
+            def chosen(reg):
+                return {"region": reg, "frequency": region.FREQ[reg], "source": "chosen", "from": ""}
+            app.push(Menu(app, "Region default", [
+                ("North America: 915 MHz", lambda: pick(chosen("na"))),
+                ("Europe: 868 MHz", lambda: pick(chosen("eu"))),
+                (f"From the time zone: {auto['frequency'] / 1e6:g} MHz", lambda: pick(auto)),
+            ], subtitle=f"Time zone: {tz or 'not set'}. Elsewhere, set Frequency by hand"))
         elif key == "ifac":
             def ask(title, field, limit):
                 app.push(Compose(app, title, lambda t, f=field: self._set_ifac(f, t), initial=r.get(field, ""),
